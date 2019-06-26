@@ -4,9 +4,9 @@
 
 This is a Pytorch implementation of Graphstar (graph star net) and presented here solely for the review purpose of NeurIPS 2019. All double-blinded anonymous review policies have been observed and honored.
 
-**__NOTE__**: We cannot use any names for the paper during the review process yet
+<!--
 >  Graph Star Net for Generalized Multi-Task Learning. *. NeurIPS 2019 (Submitted) [[Paper]](GraphStarNet_final_NIPS2019.pdf).
-
+-->
 Graphstar is a novel and unified graph neural net architecture which utilizes message-passing relay and attention mechanism for multiple prediction tasks, node classification, graph classification as well as link prediction. GraphStar addresses many earlier challenges facing graph neural nets and achieves non-local representation without increasing the model depth or bearing heavy computational costs. We also propose a new method to tackle topic-specific sentiment analysis based on node classification and text classification as graph classification. Our work shows that **star nodes** can learn effective graph-data representation and improve on current methods for the three tasks. Specifically, for graph classification and link prediction, GraphStar outperforms the current state-of-the-art models by 2-5% on several key benchmarks.
 
 --------------------------------------------------------------------------------
@@ -171,10 +171,11 @@ After got the log file, just run the command in a terminal, like:
 | **GraphStar**  | **0.959(0.003)**  | **0.977(0.003)**  | **0.970(0.001)**  | 
 
 --------------------------------------------------------------------------------
+<!--
 ## Reference
 If you find this work useful for your research, please consider citing our work in following way after pubulished.
 
- **__NOTE__**: We cannot have the following reference during the review period
+
 
 ```
 @article{
@@ -185,6 +186,6 @@ If you find this work useful for your research, please consider citing our work 
   year={2019}
 }
 ```
-
+-->
 ## Acknowledgement
 This code is based on the Pytorch_geometry's work, so we would like to thank its contributors (Fey, Matthias and Lenssen, Jan E.) here.
