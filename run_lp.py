@@ -22,19 +22,21 @@ def load_data(dataset_name):
     num_features = dataset.num_features
     data = GAE.split_edges(GAE, dataset[0])
 
-    data.edge_index = gutils.to_undirected(data.train_pos_edge_index)
-    data.edge_index = torch.cat([data.edge_index, gutils.to_undirected(data.val_pos_edge_index)], dim=1)
-    data.edge_index = torch.cat([data.edge_index, gutils.to_undirected(data.test_pos_edge_index)], dim=1)
+    data.train_pos_edge_index = gutils.to_undirected(data.train_pos_edge_index)
+    data.val_pos_edge_index = gutils.to_undirected(data.val_pos_edge_index)
+    data.test_pos_edge_index = gutils.to_undirected(data.test_pos_edge_index)
 
-    data.edge_train_mask = torch.cat([torch.ones((data.train_pos_edge_index.size(-1) * 2)),
-                                      torch.zeros((data.val_pos_edge_index.size(-1) * 2)),
-                                      torch.zeros((data.test_pos_edge_index.size(-1) * 2))], dim=0).byte()
-    data.edge_val_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1) * 2)),
-                                    torch.ones((data.val_pos_edge_index.size(-1) * 2)),
-                                    torch.zeros((data.test_pos_edge_index.size(-1) * 2))], dim=0).byte()
-    data.edge_test_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1) * 2)),
-                                     torch.zeros((data.val_pos_edge_index.size(-1) * 2)),
-                                     torch.ones((data.test_pos_edge_index.size(-1) * 2))], dim=0).byte()
+    data.edge_index = torch.cat([data.train_pos_edge_index, data.val_pos_edge_index, data.test_pos_edge_index], dim=1)
+
+    data.edge_train_mask = torch.cat([torch.ones((data.train_pos_edge_index.size(-1))),
+                                      torch.zeros((data.val_pos_edge_index.size(-1))),
+                                      torch.zeros((data.test_pos_edge_index.size(-1)))], dim=0).byte()
+    data.edge_val_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1))),
+                                    torch.ones((data.val_pos_edge_index.size(-1))),
+                                    torch.zeros((data.test_pos_edge_index.size(-1)))], dim=0).byte()
+    data.edge_test_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1))),
+                                     torch.zeros((data.val_pos_edge_index.size(-1))),
+                                     torch.ones((data.test_pos_edge_index.size(-1)))], dim=0).byte()
     data.edge_type = torch.zeros(((data.edge_index.size(-1)),)).long()
 
     data.batch = torch.zeros((1, data.num_nodes), dtype=torch.int64).view(-1)
