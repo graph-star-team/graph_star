@@ -23,8 +23,8 @@ DATASET = "imdb"
 
 def _load_split_data():
     res = []
-    for filepath in ["/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/train",
-                     "/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/test"]:
+    for filepath in ["./data/aclImdb/train",
+                     "./data/aclImdb/test"]:
         bert_encode_res = np.load(os.path.join(filepath, "split_bert_large_encode_res.npy"),
                                   allow_pickle=True)  # 25000,768
         y = np.load(os.path.join(filepath, "split_y.npy"), allow_pickle=True)  # 25000
@@ -45,8 +45,8 @@ def _load_split_data():
 
 def _load_split_2k_data():
     res = []
-    for filepath in ["/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/train",
-                     "/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/test"]:
+    for filepath in ["./data/aclImdb/train",
+                     "./data/aclImdb/test"]:
         bert_encode_res = np.load(os.path.join(filepath, "split_2k_bert_large_encode_res.npy"),
                                   allow_pickle=True)  # 25000,768
         y = np.load(os.path.join(filepath, "split_2k_y.npy"), allow_pickle=True)  # 25000
@@ -67,8 +67,8 @@ def _load_split_2k_data():
 
 def _load_split_star_data():
     res = []
-    for filepath in ["/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/train",
-                     "/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/test"]:
+    for filepath in ["./data/aclImdb/train",
+                     "./data/aclImdb/test"]:
         bert_encode_res = np.load(os.path.join(filepath, "split_bert_encode_res.npy"))  # 25000,768
         y = np.load(os.path.join(filepath, "split_y.npy"))  # 25000
         edge = np.load(os.path.join(filepath, "split_edge.npy"))  # 2,num_edge*2
@@ -90,8 +90,8 @@ def _load_split_star_data():
 
 def _load_all_data():
     res = []
-    for filepath in ["/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/train",
-                     "/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb/test"]:
+    for filepath in ["./data/aclImdb/train",
+                     "./data/aclImdb/test"]:
         bert_encode_res = np.load(os.path.join(filepath, "all_bert_large_encode_res.npy"))  # 25000,768
         y = np.load(os.path.join(filepath, "all_y.npy"))  # 25000
         edge = np.load(os.path.join(filepath, "all_edge.npy"))  # 2,num_edge*2
