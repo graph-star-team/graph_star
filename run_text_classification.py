@@ -17,7 +17,7 @@ DATASET = "R8" # should be in ['R8', 'R52', 'mr', 'ohsumed', '20ng']
 
 def load_data():
     bs = 96
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', DATASET)
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '.', 'data', DATASET)
     dataset = TUDataset(path, DATASET, use_node_attr=True)
 #     dataset = dataset.shuffle()
 #     dataset.data.x = dataset.data.x[:, :-3]
