@@ -16,7 +16,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def load_data(dataset_name):
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset_name)
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '.', 'data', dataset_name)
 
     dataset = Planetoid(path, dataset_name, T.TargetIndegree())
     num_features = dataset.num_features
