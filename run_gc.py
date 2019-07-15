@@ -15,7 +15,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 def load_data(dataset_name, val_idx):
     bs = 600
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset_name)
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '.', 'data', dataset_name)
     dataset = TUDataset(path, dataset_name, use_node_attr=True)
     dataset = dataset.shuffle()
 
