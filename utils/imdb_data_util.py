@@ -65,5 +65,5 @@ def load_data(filepath):
     np.save(os.path.join(filepath, "split_2k_y.npy"), yy)
 
 
-load_data("/your/path/aclImdb/train")
-load_data("/your/path/aclImdb/test")
+load_data("../data/aclImdb/train")
+load_data("../data/aclImdb/test")
