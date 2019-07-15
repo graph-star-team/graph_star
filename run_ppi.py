@@ -21,7 +21,7 @@ DATASET = "ppi"
 
 
 def load_data():
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'PPI')
+    path = osp.join(osp.dirname(osp.realpath(__file__)), '.', 'data', 'PPI')
 
     train_dataset = PPI(path, split='train')
     val_dataset = PPI(path, split='test')
