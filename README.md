@@ -77,6 +77,7 @@ For more information regarding the datasets, please refer to the submitted paper
 ## Testing (Run the code)
 
  1) For node classification tasks (cora, citeseer and pubmed .etc), choose related script then try
+ 
  Prepare Imdb dataset:
  ```sh
  cd data
