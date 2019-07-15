@@ -11,7 +11,7 @@ word_embdz_size = 200  # only valid when use_word_feat is False
 wind_size = 10  # sliding window size
 use_repeat_word = False  # repeat words with different context are treated as same/different nodes, should be True for 20ng, and False for others
 
-output_dir = '../data/' + dataset + '/raw/'
+output_dir = './data/' + dataset + '/raw/'
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -94,19 +94,19 @@ def main():
 
     test_row, test_col = get_combined_result(rows, cols)
 
-    with open('../data/' + dataset + '/raw/' + dataset + '_graph_labels.txt', 'w') as g_lab:
+    with open('./data/' + dataset + '/raw/' + dataset + '_graph_labels.txt', 'w') as g_lab:
         for it in graph_labels:
             g_lab.write(str(it) + '\n')
 
-    with open('../data/' + dataset + '/raw/' + dataset + '_graph_indicator.txt', 'w') as g_ind:
+    with open('./data/' + dataset + '/raw/' + dataset + '_graph_indicator.txt', 'w') as g_ind:
         for it in graph_indicator:
             g_ind.write(str(it) + '\n')
 
-    with open('../data/' + dataset + '/raw/' + dataset + '_A.txt', 'w') as g_A:
+    with open('./data/' + dataset + '/raw/' + dataset + '_A.txt', 'w') as g_A:
         for ind, (r, c) in enumerate(zip(test_row, test_col)):
             g_A.write(str(r) + ', ' + str(c) + '\n')
 
-    with open('../data/' + dataset + '/raw/' + dataset + '_node_attributes.txt', 'w') as g_node_att:
+    with open('./data/' + dataset + '/raw/' + dataset + '_node_attributes.txt', 'w') as g_node_att:
         for ind, it in enumerate(node_attrs):
             _it = [str(f) for f in it]
             f_str = ', '.join(_it)
