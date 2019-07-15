@@ -77,14 +77,23 @@ For more information regarding the datasets, please refer to the submitted paper
 ## Testing (Run the code)
 
  1) For node classification tasks (cora, citeseer and pubmed .etc), choose related script then try
+ Prepare Imdb dataset:
+ ```sh
+ cd data
+ wget https://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz && tar zxvf aclImdb_v1.tar.gz
+ cd ..
+ python utils/imdb_data_util.py
+  ```
+ 
  ```sh
  python run_transductive_nc.py --dataset=cora --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=2e-3  --lr=1e-3  
  python run_transductive_nc.py --dataset=citeseer --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=4e-3  --lr=1e-3  
- python run_transductive_nc.py --dataset=pubmed --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=1e-4  --lr=5e-3  
-
+ python run_transductive_nc.py --dataset=pubmed --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=1e-4  --lr=5e-3
+ 
  python run_imdb.py
  python run_ppi.py
  ```
+
 
  2) For link prediction tasks (cora, citeseer and pubmed .etc), choose related script then try
  ```sh
