@@ -126,3 +126,11 @@ dmypy.json
 .pyre/
 
 .idea/
+
+
+#Block tensorboard metadata
+tensorboard/
+output
+
+#Block data
+data/

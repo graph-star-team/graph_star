@@ -226,6 +226,11 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     lr = args.lr
     tw.init_writer(DATASET)
 
+    #Create directory, if it doesn't already exists
+    PATH = 'output'
+    if not os.path.exists(PATH):
+        os.mkdir(PATH)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=args.l2)
     scheduler = ReduceLROnPlateau(optimizer, "min", patience=args.patience, verbose=True, factor=0.5, cooldown=30,
                                   min_lr=lr / 100)
