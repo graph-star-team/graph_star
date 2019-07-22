@@ -49,7 +49,7 @@ For more information regarding the datasets, please refer to the submitted paper
  Normally we have already provided most of the optimal value which we got during traning. So you don't have to change much. Any away, we still explain the main options here.
 
  ```
-   --device                                     INT     GPU ID.                                        Default is `0`.
+   --device                                     INT/STR GPU ID / Use CPU                               Default is `0`, use 'cpu' if no GPU is available
    --num_star                                   INT     Number of Star.                                Default is 1.
    --epochs                                     INT     Number of training epochs.                     Default is 2000.
    --lr                                         FLOAT   Adam learning rate.                            Default is 2e-4.
@@ -200,7 +200,7 @@ After got the log file, just run the command in a terminal, like:
 --------------------------------------------------------------------------------
 <!--
 ## Reference
-If you find this work useful for your research, please consider citing our work in following way after pubulished.
+If you find this work useful for your research, please consider citing our work in following way after published.
 
 
 
