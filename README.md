@@ -87,9 +87,9 @@ For more information regarding the datasets, please refer to the submitted paper
   ```
  
  ```sh
- python run_transductive_nc.py --dataset=cora --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=2e-3  --lr=1e-3  
- python run_transductive_nc.py --dataset=citeseer --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=4e-3  --lr=1e-3  
- python run_transductive_nc.py --dataset=pubmed --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=1e-4  --lr=5e-3
+ python run_transductive_nc.py --dataset=cora --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=2e-3  --lr=1e-3 --star_init_method=mean
+ python run_transductive_nc.py --dataset=citeseer --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=4e-3  --lr=1e-3 --star_init_method=mean 
+ python run_transductive_nc.py --dataset=pubmed --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=1e-4  --lr=5e-3 --star_init_method=mean
  
  python run_imdb.py
  python run_ppi.py
