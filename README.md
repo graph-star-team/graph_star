@@ -98,9 +98,9 @@ For more information regarding the datasets, please refer to the submitted paper
 
  2) For link prediction tasks (cora, citeseer and pubmed .etc), choose related script then try
  ```sh
- python run_lp.py --dataset=pubmed --dropout=0 --hidden=512 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=500
- python run_lp.py --dataset=citeseer --dropout=0 --hidden=2048 --l2=2e-4 --num_layers=3 --cross_layer=False --patience=500
- python run_lp.py --dataset=cora --dropout=0 --hidden=2048 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=200
+ python run_lp.py --dataset=pubmed --dropout=0 --hidden=512 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=500 --residual=True --residual_star=True
+ python run_lp.py --dataset=citeseer --dropout=0 --hidden=2048 --l2=2e-4 --num_layers=3 --cross_layer=False --patience=500 --residual=True --residual_star=True
+ python run_lp.py --dataset=cora --dropout=0 --hidden=2048 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=200 --residual=True --residual_star=True
  ```
 
 
