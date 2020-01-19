@@ -2,9 +2,73 @@ import numpy as np
 import os
 import torch
 import random
+from bert_serving.client import BertClient
 
 random.seed(31415926)
 
+def build_imdb_npy(imdb_path):
+    for file_path in [os.path.join(imdb_path, "train"),
+                      os.path.join(imdb_path, "test")]:
+        txt_list = []
+        y = []
+        for label in ["pos", "neg"]:
+            train_path = os.path.join(file_path, label)
+
+            for fname in os.listdir(train_path):
+                f = open(os.path.join(train_path, fname))
+                txt = ""
+                for l in f.readlines():
+                    txt += (l + " ")
+                txt_list.append(txt)
+                if label == "pos":
+                    y.append(1)
+                else:
+                    y.append(0)
+        y = np.array(y)
+        bc = BertClient()
+        res = bc.encode(txt_list)
+
+        np.save(os.path.join(file_path, "bert_large_encode_res.npy"), res)
+        np.save(os.path.join(file_path, "y.npy"), y)
+
+        # res = np.load(os.path.join(file_path, "all_bert_fine_tuning_encode_res.npy"))
+        # y = np.load(os.path.join(file_path, "all_y.npy"))
+
+        topic_dic = dict()
+        lines = []
+        f = open(os.path.join(file_path, "urls_pos.txt"))
+        lines.extend([x[26:35] for x in f.readlines()])
+        f = open(os.path.join(file_path, "urls_neg.txt"))
+        lines.extend([x[26:35] for x in f.readlines()])
+
+        s_edge = []
+        s_bug_edge = []
+        s_be = []
+        s_y = []
+        t_idx = 0
+        for idx, id in enumerate(lines):
+            if id not in topic_dic:
+                topic_dic[id] = len(topic_dic)
+                s_edge.append([])
+                s_bug_edge.append([])
+                s_be.append([res[idx]])
+                s_y.append([y[idx]])
+                # t_idx += 1
+            else:
+                t_idx = topic_dic[id]
+                new_idx = len(s_be[t_idx])
+                for i in range(len(s_be[t_idx])):
+                    s_edge[t_idx].append([i, new_idx])
+                    s_edge[t_idx].append([new_idx, i])
+                s_bug_edge[t_idx].append([0, new_idx])
+                s_bug_edge[t_idx].append([new_idx, 0])
+
+                s_be[t_idx].append(res[idx])
+                s_y[t_idx].append(y[idx])
+        np.save(os.path.join(file_path, "split_bert_large_encode_res.npy"), s_be)
+        np.save(os.path.join(file_path, "split_edge.npy"), s_edge)
+        np.save(os.path.join(file_path, "split_bug_edge.npy"), s_bug_edge)
+        np.save(os.path.join(file_path, "split_y.npy"), s_y)
 
 def load_data(filepath):
     bert_encode_res = np.load(os.path.join(filepath, "split_bert_large_encode_res.npy"))  # 25000,768
@@ -64,6 +128,7 @@ def load_data(filepath):
     np.save(os.path.join(filepath, "split_2k_bug_edge.npy"), eebb)
     np.save(os.path.join(filepath, "split_2k_y.npy"), yy)
 
-
-load_data("../data/aclImdb/train")
-load_data("../data/aclImdb/test")
+imdb_path = "/mnt/nas1/NLP/public_dataset/TC/imdb/aclImdb"
+build_imdb_npy(imdb_path)
+load_data(os.path.join(imdb_path,"train"))
+load_data(os.path.join(imdb_path,"test"))
