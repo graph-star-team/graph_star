@@ -71,10 +71,10 @@ def build_imdb_npy(imdb_path):
         np.save(os.path.join(file_path, "split_y.npy"), s_y)
 
 def load_data(filepath):
-    bert_encode_res = np.load(os.path.join(filepath, "split_bert_large_encode_res.npy"))  # 25000,768
-    y = np.load(os.path.join(filepath, "split_y.npy"))  # 25000
-    edge = np.load(os.path.join(filepath, "split_edge.npy"))  # 2,edge_num*2
-    bug_edge = np.load(os.path.join(filepath, "split_bug_edge.npy"))  # 2,edge_num*2
+    bert_encode_res = np.load(os.path.join(filepath, "split_bert_large_encode_res.npy"),allow_pickle=True)  # 25000,768
+    y = np.load(os.path.join(filepath, "split_y.npy"),allow_pickle=True)  # 25000
+    edge = np.load(os.path.join(filepath, "split_edge.npy"),allow_pickle=True)  # 2,edge_num*2
+    bug_edge = np.load(os.path.join(filepath, "split_bug_edge.npy"),allow_pickle=True)  # 2,edge_num*2
     datas = []
     for x, y, e, eb in zip(bert_encode_res, y, edge, bug_edge):
         x = np.array([_.tolist() for _ in x], dtype=np.float)
