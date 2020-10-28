@@ -1,6 +1,7 @@
 cycler==0.10.0
 decorator==4.4.0
 isodate==0.6.0
+joblib==0.14
 kiwisolver==1.0.1
 matplotlib==3.0.3
 networkx==2.3
@@ -13,12 +14,14 @@ pyparsing==2.4.0
 python-dateutil==2.8.0
 pytz==2019.1
 rdflib==4.2.2
-scikit-learn==0.20.3
+scikit-learn==0.23.0
 scipy==1.2.1
 six==1.12.0
 tensorboardX==1.6
-torch
+tensorflow
+torch==1.6
 torch-cluster
-torch-geometric
+torch-geometric==1.4.2
+torch_scatter
 torch-sparse
 texttable
