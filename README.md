@@ -37,7 +37,10 @@ For more information regarding the datasets, please refer to the submitted paper
 --------------------------------------------------------------------------------
 ## Dependencies
 
- The script has been tested under Python 3.6.X and on Nvidia GPU Tesla V100 (with CUDA 9.0 and cuDNN 7 installed). For installing required python packages, please refer to the "requirements.txt".
+The script has been tested under Python 3.6.X and on Nvidia GPU Tesla V100 (with CUDA 9.0 and cuDNN 7 installed). For installing required python packages, please refer to the "requirements.txt".
+ 
+The code will not work using newer versions of Python, such as Python 3.8.x  
+We are currently running [Python 3.7.5](https://www.python.org/downloads/release/python-375/)
 
 --------------------------------------------------------------------------------
 ## Options
@@ -69,6 +72,20 @@ For more information regarding the datasets, please refer to the submitted paper
 
 --------------------------------------------------------------------------------
 
+## Setup
+ 
+ 1) Create a virualenv using Python 3.7.x
+ 
+ ``` 
+ python3.7 -m virtualenv env37 
+ source env37/bin/activate
+ ```
+ 
+ 2) Install dependencies
+ 
+ ```
+ pip install -r requirements.txt
+ ```
 ## Testing (Run the code)
 
  1) For node classification tasks (cora, citeseer and pubmed .etc), choose related script then try
@@ -117,6 +134,13 @@ For more information regarding the datasets, please refer to the submitted paper
 
 
 --------------------------------------------------------------------------------
+## Tensorboard Visualization
+
+To visualize model metrics such as loss and accuracy, we log these values using tensorboardX's SummaryWriter. 
+To visualize the metrics of your model run:
+
+```tensorboard --logdir="./tensorboard"```
+
 ## Plot Graph Classification Results
 
 For graph classification tasks (D&D, Enzymes, Proteins etc.), we adopt 10-fold cross validation as metric to evaluate their performance. A script "log_plot_tools" was created to visualize their results. To use this tool, first you need to save the print out messages during training in a txt file.
@@ -210,4 +234,4 @@ If you find this work useful for your research, please consider citing our work 
 ```
 -->
 ## Acknowledgement
-This code is based on the Pytorch_geometry's work, so we would like to thank its contributors (Fey, Matthias and Lenssen, Jan E.) here.
+This code is based on the graph_star_team's work, which is based on Pytorch_geometry's work, so we would like to thank all the previous contributors here.
