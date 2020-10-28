@@ -49,12 +49,12 @@ def main(_args):
 
     data, num_features = load_data(args.dataset)
 
-    for i in range(10):
-        print("===========================================")
-        trainer.trainer(args, args.dataset, [data], [data], [data], transductive=True,
-                        num_features=num_features, max_epoch=args.epochs,
-                        num_node_class=0,
-                        link_prediction=True)
+    
+    print("\n=================== Run Link Prediction ===================\n")
+    trainer.trainer(args, args.dataset, [data], [data], [data], transductive=True,
+                    num_features=num_features, max_epoch=args.epochs,
+                    num_node_class=0,
+                    link_prediction=True)
 
 
 if __name__ == '__main__':
