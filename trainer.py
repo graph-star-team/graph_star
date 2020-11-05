@@ -25,7 +25,7 @@ test_neg_sampling_queue = None
 val_neg_sampling_queue = None
 
 
-def train_transductive(model, optimizer, loader, device, node_classification, node_multi_label, graph_classification,
+def train_transductive(model, optimizer, loader, device, node_multi_label,
                        graph_multi_label, link_prediction, mode="train", cal_mrr_score=False):
     global train_neg_sampling_queue, test_neg_sampling_queue, val_neg_sampling_queue
     if mode == "train":
@@ -58,23 +58,7 @@ def train_transductive(model, optimizer, loader, device, node_classification, no
                     model(data.x, train_edge_index, data.batch, star=star_seed, edge_type=train_edge_type)
         loss = None
 
-        if node_classification:
-            if mode == "train":
-                mask = data.train_mask
-            elif mode == "val":
-                mask = data.val_mask
-            elif mode == "test":
-                mask = data.test_mask
-            loss_ = model.nc_loss(logits_node[mask], data.y[mask], node_multi_label)
-            loss = loss_ if loss is None else loss + loss_
-            node_acc_count += model.nc_test(logits_node[mask],
-                                            data.y[mask], node_multi_label)
-            total_node += len(logits_node[mask])
-        if graph_classification:
-            loss_ = model.gc_loss(logits_star, data.y, graph_multi_label)
-            loss = loss_ if loss is None else loss + loss_
-            graph_acc_count += model.gc_test(logits_star, data.y, node_multi_label)
-            total_graph += len(logits_star)
+
         if link_prediction:
             pei, pet = get_edge_info(data, mode)
             if mode == "train":
@@ -127,12 +111,12 @@ def train_transductive(model, optimizer, loader, device, node_classification, no
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
             optimizer.step()
-    node_acc = float(node_acc_count) / total_node if node_classification else -1
-    graph_acc = float(graph_acc_count) / total_graph if graph_classification else -1
+    node_acc = -1
+    graph_acc = -1
     return total_loss / data_count, node_acc, graph_acc, lp_auc, lp_ap
 
 
-def train_inductive(model, optimizer, loader, device, node_classification, node_multi_label, graph_classification,
+def train_inductive(model, optimizer, loader, device, node_multi_label,
                     graph_multi_label, link_prediction, mode="train", cal_mrr_score=False):
     if mode == "train":
         model.train()
@@ -163,24 +147,13 @@ def train_inductive(model, optimizer, loader, device, node_classification, node_
                           edge_type=data.edge_type if hasattr(data, "edge_type") else None)
 
         loss = None
-        if node_classification:
-            loss_ = model.nc_loss(logits_node, data.y, node_multi_label)
-            loss = loss_ if loss is None else loss + loss_
-            node_acc_count += model.nc_test(logits_node, data.y, node_multi_label)
-            total_node += len(logits_node)
-        if graph_classification:
-            loss_ = model.gc_loss(logits_star, data.y, graph_multi_label)
-            loss = loss_ if loss is None else loss + loss_
-            graph_acc_count += model.gc_test(logits_star, data.y, node_multi_label)
-            total_graph += len(logits_star)
-
         total_loss += loss.item() * num_graphs
         if mode == "train":
             loss.backward()
             # torch.nn.utils.clip_grad_value_(model.parameters(), 0.01)
             optimizer.step()
-    node_acc = float(node_acc_count) / total_node if node_classification else -1
-    graph_acc = float(graph_acc_count) / total_graph if graph_classification else -1
+    node_acc = -1
+    graph_acc = -1
     return total_loss / data_count, node_acc, graph_acc, lp_auc, lp_ap
 
 
@@ -199,8 +172,6 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     tab_printer(args)
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
-    node_classification = num_node_class > 0
-    graph_classification = num_graph_class > 0
     model = GraphStar(num_features=num_features, num_node_class=num_node_class,
                       num_graph_class=num_graph_class, hid=args.hidden, num_star=args.num_star,
                       star_init_method=args.star_init_method, link_prediction=link_prediction,
@@ -246,18 +217,14 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
         train_loss, train_node_acc, train_graph_acc, train_lp_auc, train_lp_ap = \
             train(model, optimizer, train_loader,
                   args.device,
-                  node_classification,
                   node_multi_label,
-                  graph_classification,
                   graph_multi_label,
                   link_prediction, mode="train")
         if epoch % val_per_epoch == 0:
             val_loss, val_node_acc, val_graph_acc, val_lp_auc, val_lp_ap = \
                 train(model, optimizer, val_loader,
                       args.device,
-                      node_classification,
                       node_multi_label,
-                      graph_classification,
                       graph_multi_label,
                       link_prediction, mode="val", cal_mrr_score=cal_mrr_score)
         else:
@@ -266,9 +233,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
             test_loss, test_node_acc, test_graph_acc, test_lp_auc, test_lp_ap = \
                 train(model, optimizer, test_loader,
                       args.device,
-                      node_classification,
                       node_multi_label,
-                      graph_classification,
                       graph_multi_label,
                       link_prediction, mode="test", cal_mrr_score=cal_mrr_score)
         else:
@@ -278,32 +243,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
         val_str = ""
         test_str = ""
         max_str = ""
-        if node_classification:
-            tw.writer.add_scalar('train/node_acc', train_node_acc, tw.train_steps)
-            tw.writer.add_scalar('val/node_acc', val_node_acc, tw.val_steps)
-            # tw.writer.add_scalar('test/node_acc', test_node_acc, tw.test_steps)
-            max_node_acc = max(test_node_acc, max_node_acc)
 
-            train_str += "NC Acc: {:.4f}, ".format(train_node_acc)
-            val_str += "NC Acc: {:.4f}, ".format(val_node_acc)
-            test_str += "NC Acc: {:.4f}, ".format(test_node_acc)
-            max_str += "NC Acc: {:.4f}, ".format(max_node_acc)
-        if graph_classification:
-            tw.writer.add_scalar('train/graph_acc', train_graph_acc, tw.train_steps)
-
-            if (test_graph_acc - max_graph_acc) > 1e-4:
-                max_gc_epoch_idx = epoch
-
-            tw.writer.add_scalar('val/graph_acc', val_graph_acc, tw.val_steps)
-            # tw.writer.add_scalar('test/graph_acc', test_graph_acc, tw.test_steps)
-            max_graph_acc = max(test_graph_acc, max_graph_acc)
-            gc_accs.append(test_graph_acc)
-
-            train_str += "GC Acc: {:.4f}, ".format(train_graph_acc)
-            val_str += "GC Acc: {:.4f}, ".format(val_graph_acc)
-            test_str += "GC Acc: {:.4f}, ".format(test_graph_acc)
-            max_str += "GC Acc: {:.4f}, MaxE: {}, Hold: {}".format(max_graph_acc, max_gc_epoch_idx,
-                                                                   epoch - max_gc_epoch_idx)
         if link_prediction:
             tw.writer.add_scalar('train/lp_auc', train_lp_auc, tw.train_steps)
             tw.writer.add_scalar('val/lp_auc', val_lp_auc, tw.val_steps)
