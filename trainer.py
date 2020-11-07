@@ -247,10 +247,10 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
         if link_prediction:
             tw.writer.add_scalar('train/lp_auc', train_lp_auc, tw.train_steps)
             tw.writer.add_scalar('val/lp_auc', val_lp_auc, tw.val_steps)
-            # tw.writer.add_scalar('test/lp_auc', test_lp_auc, tw.test_steps)
+            tw.writer.add_scalar('test/lp_auc', test_lp_auc, tw.epochs)
             tw.writer.add_scalar('train/lp_ap', train_lp_ap, tw.train_steps)
             tw.writer.add_scalar('val/lp_ap', val_lp_ap, tw.val_steps)
-            # tw.writer.add_scalar('test/lp_ap', test_lp_ap, tw.test_steps)
+            tw.writer.add_scalar('test/lp_ap', test_lp_ap, tw.epochs)
             max_lp_auc = max(test_lp_auc, max_lp_auc)
             max_lp_ap = max(test_lp_ap, max_lp_ap)
             max_val_lp = max((val_lp_ap + val_lp_auc) / 2, max_val_lp)
@@ -261,7 +261,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
             max_str += "LP AVG: {:.4f},VAL: {:.4f} ".format(sum([max_lp_auc, max_lp_ap]) / 2, max_val_lp)
         tw.writer.add_scalar('train/loss', train_loss, tw.train_steps)
         tw.writer.add_scalar('val/loss', val_loss, tw.val_steps)
-        # tw.writer.add_scalar('test/loss', test_loss, tw.test_steps)
+        tw.writer.add_scalar('test/loss', test_loss, tw.epochs)
 
         log_str = 'Epoch: {:02d}, TRAIN Loss: {:.4f}, {} || VAL Loss: {:.4f}, {} || TEST Loss: {:.4f}, {} || Max {}'.format(
             epoch, train_loss, train_str, val_loss, val_str, test_loss, test_str, max_str)
