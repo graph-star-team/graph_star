@@ -10,89 +10,97 @@ import torch
 from torch_geometric.nn import GAE
 import trainer
 import utils.gsn_argparse as gap
+import utils.label_encode_dataset as led
+import utils.create_node_embedding as cne
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
+from gensim.models import KeyedVectors
+import math as m
+
+
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-# label encoding (entity->id & relation->id)
-name = ['entity', 'id']
-entity_id = pd.read_csv('./data/FB15k/entities.txt', sep='\t', header=None, names=name, engine='python')
-entity = entity_id['entity'].values.tolist()
-le_entity = preprocessing.LabelEncoder()
-le_entity.fit(entity)
 
-name = ['relation', 'id']
-relation_id = pd.read_csv('./data/FB15k/relations.txt', sep='\t', header=None, names=name, engine='python')
-relation = relation_id['relation'].values.tolist()
-le_relation = preprocessing.LabelEncoder()
-le_relation.fit(relation)
+
 
 
 def load_data():
-    name = ['subject', 'object', 'relation']
-    data = pd.read_csv('./data/FB15k/valid.txt', sep='\t', header=None, names=name, engine='python')
+    entity_id = pd.read_csv('./data/FB15k/entities.txt', sep='\t', header=None, names=['entity', 'id'], engine='python')
+    entity = entity_id['entity'].values
+
+    relation_id = pd.read_csv('./data/FB15k/relations.txt', sep='\t', header=None, names=['relation', 'id'], engine='python')
+    relation = relation_id['relation'].values
+
+    data = pd.read_csv('./data/FB15k/valid.txt', sep='\t', header=None, names=['subject', 'object', 'relation'], engine='python')
     print('\tLoading FB15k training (valid file) data...')
+    
+    dataset = led.label_encode_dataset(entity, relation, data)
 
-    subjects = data['subject'].values.tolist()
-    objects = data['object'].values.tolist()
-    relations = data['relation'].values.tolist()
+    # create node embeddings if none exists
+    if not osp.exists("embeddings"):
+        cne.create_node_embedding(dataset)
+    embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding.kv')
 
-    # string list to int array using LabelEncoder
-    subjects = np.array(le_entity.transform(subjects))
-    objects = np.array(le_entity.transform(objects))
-    relations = np.array(le_relation.transform(relations))
+    dataset.x = torch.tensor(embedded_nodes.vectors, dtype=torch.float)
+    edge_indexes = dataset.edge_index
+    #data = GAE.split_edges(GAE, dataset)
+    print(dataset)
+    full_length = dataset.edge_index.shape[-1]
+    train_index = torch.tensor(dataset.edge_index[:, 0:m.floor(full_length*0.7)], dtype=torch.long)
+    train_attr_index = torch.tensor(dataset.edge_attr[0:m.floor(full_length*0.7)], dtype=torch.long)
 
-    train_set_raw = np.concatenate([subjects.reshape(-1, 1), relations.reshape(-1, 1), objects.reshape(-1, 1)], axis=1)
-    n_pos_samples = len(relations)
+    val_index = torch.tensor(dataset.edge_index[:, m.floor(full_length*0.7):m.floor(full_length*0.9)], dtype=torch.long)
+    val_attr_index = torch.tensor(dataset.edge_attr[m.floor(full_length*0.7):m.floor(full_length*0.9)], dtype=torch.long)
 
-    del name, data, subjects, objects, relations, n_pos_samples
-
-    # entity_pair = [[subject, object]] y = [[relation]] edge_index = [[subject],[object]]
-    entity_pairs = torch.tensor(train_set_raw[:, 0:3:2], dtype=torch.float)
-    y = torch.tensor(train_set_raw[:, 1], dtype=torch.float)
-    edge_index = torch.tensor([train_set_raw[:,0], train_set_raw[:,2]], dtype=torch.long)
+    test_index = torch.tensor(dataset.edge_index[:, m.floor(full_length*0.9):], dtype=torch.long)
+    test_attr_index = torch.tensor(dataset.edge_attr[m.floor(full_length*0.9):], dtype=torch.long)
 
     
-    dataset = Data(x=entity_pairs, y=y, edge_index=edge_index)
-    data = GAE.split_edges(GAE, dataset)
-    del entity_pairs, y, dataset, train_set_raw
-    
-    data.train_pos_edge_index = gutils.to_undirected(data.train_pos_edge_index)
-    data.val_pos_edge_index = gutils.to_undirected(data.val_pos_edge_index)
-    data.test_pos_edge_index = gutils.to_undirected(data.test_pos_edge_index)
 
-    data.edge_index = torch.cat([data.train_pos_edge_index, data.val_pos_edge_index, data.test_pos_edge_index], dim=1)
+    dataset.edge_index = torch.cat([train_index, val_index, test_index], dim=1)
+    dataset.edge_attr = torch.cat([train_attr_index, val_attr_index, test_attr_index])
 
-    data.edge_train_mask = torch.cat([torch.ones((data.train_pos_edge_index.size(-1))),
-                                      torch.zeros((data.val_pos_edge_index.size(-1))),
-                                      torch.zeros((data.test_pos_edge_index.size(-1)))], dim=0).byte()
-    data.edge_val_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1))),
-                                    torch.ones((data.val_pos_edge_index.size(-1))),
-                                    torch.zeros((data.test_pos_edge_index.size(-1)))], dim=0).byte()
-    data.edge_test_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1))),
-                                     torch.zeros((data.val_pos_edge_index.size(-1))),
-                                     torch.ones((data.test_pos_edge_index.size(-1)))], dim=0).byte()
+    dataset.edge_train_mask = torch.cat([torch.ones((train_index.size(-1))),
+                                      torch.zeros((val_index.size(-1))),
+                                      torch.zeros((test_index.size(-1)))], dim=0).byte()
+    dataset.edge_val_mask = torch.cat([torch.zeros((train_index.size(-1))),
+                                    torch.ones((val_index.size(-1))),
+                                    torch.zeros((test_index.size(-1)))], dim=0).byte()
+    dataset.edge_test_mask = torch.cat([torch.zeros((train_index.size(-1))),
+                                     torch.zeros((val_index.size(-1))),
+                                     torch.ones((test_index.size(-1)))], dim=0).byte()
 
-    data.edge_type = torch.zeros(((data.edge_index.size(-1)),)).long()
+    dataset.edge_train_attr_mask = torch.cat([torch.ones((train_attr_index.size(-1))),
+                                      torch.zeros((val_attr_index.size(-1))),
+                                      torch.zeros((test_attr_index.size(-1)))], dim=0).byte()
+    dataset.edge_val_attr_mask = torch.cat([torch.zeros((train_attr_index.size(-1))),
+                                    torch.ones((val_attr_index.size(-1))),
+                                    torch.zeros((test_attr_index.size(-1)))], dim=0).byte()
+    dataset.edge_test_attr_mask = torch.cat([torch.zeros((train_attr_index.size(-1))),
+                                     torch.zeros((val_attr_index.size(-1))),
+                                     torch.ones((test_attr_index.size(-1)))], dim=0).byte()
 
-    data.batch = torch.zeros((1, data.num_nodes), dtype=torch.int64).view(-1)
-    data.num_graphs = 1
-    num_features=2
-    return data, num_features
+    dataset.edge_type = torch.zeros(((dataset.edge_index.size(-1)),)).long()
+
+    dataset.batch = torch.zeros((1, dataset.num_nodes), dtype=torch.int64).view(-1)
+    dataset.num_graphs = 1
+    num_features = dataset.x.shape[-1] 
+    num_relations = max(np.unique(dataset.edge_attr)) + 1
+    return dataset, num_features, num_relations
 
 
 def main(_args):
     print("@@@@@@@@@@@@@@@@ Multi-Relational Link Prediction @@@@@@@@@@@@@@@@")
     args = gap.parser.parse_args(_args)
-    args.dataset = 'FB15K'
-    data, num_features = load_data()
+    args.dataset = 'FB15K_2'
+    data, num_features, num_relations = load_data()
     gap.tab_printer(data)
     print("\n=================== Run Trainer ===================\n")
     
     trainer.trainer(args, args.dataset, [data], [data], [data], transductive=True,
-                    num_features=num_features, max_epoch=args.epochs,
+                    num_features=num_features, num_relations=num_relations, max_epoch=args.epochs,
                     num_node_class=0,
                     link_prediction=True)
     

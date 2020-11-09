@@ -15,8 +15,8 @@ def get_edge_info(data, type):
     attr = "edge_" + type + "_mask"
     edge_index = data.edge_index[:, getattr(data, attr)] if hasattr(data, attr) else data.edge_index
     edge_type = None
-    if hasattr(data, "edge_type"):
-        edge_type = data.edge_type[getattr(data, attr)] if hasattr(data, attr) else data.edge_type
+    attr = "edge_" + type + "_attr_mask"
+    edge_type = data.edge_attr[getattr(data, attr)] if hasattr(data, attr) else data.edge_attr
     return edge_index, edge_type
 
 
@@ -75,7 +75,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                 if test_neg_sampling_queue is None:
                     test_neg_sampling_queue = Queue(maxsize=30)
                     val_neg_sampling_queue = Queue(maxsize=30)
-                    test_true_tuples = torch.stack([data.edge_index[0], data.edge_type, data.edge_index[1]],
+                    test_true_tuples = torch.stack([data.edge_index[0], data.edge_attr, data.edge_index[1]],
                                                    dim=0).t().cpu().numpy()
                     test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
                     # build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
@@ -104,7 +104,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
             loss = loss_ if loss is None else loss + loss_
             lp_auc, lp_ap = model.lp_test(pred, y)
             if not mode == "train" and cal_mrr_score:
-                model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
+                model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_attr)
 
         total_loss += loss.item() * num_graphs
         if mode == "train":
@@ -139,12 +139,12 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
         if mode == "train":
             logits_node, logits_star, logits_lp = \
                 model(data.x, data.edge_index, data.batch, star=star_seed,
-                      edge_type=data.edge_type if hasattr(data, "edge_type") else None)
+                      edge_type=data.edge_attr if hasattr(data, "edge_attr") else None)
         else:
             with torch.no_grad():
                 logits_node, logits_star, logits_lp = \
                     model(data.x, data.edge_index, data.batch, star=star_seed,
-                          edge_type=data.edge_type if hasattr(data, "edge_type") else None)
+                          edge_type=data.edge_attr if hasattr(data, "edge_attr") else None)
 
         loss = None
         total_loss += loss.item() * num_graphs
@@ -158,7 +158,7 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
 
 
 def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=False,
-            num_features=0, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
+            num_features=0, num_relations=1, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
             save_per_epoch=100, load_model=False, cal_mrr_score=False,
             node_multi_label=False, graph_multi_label=False, link_prediction=False):
     if transductive:
@@ -172,7 +172,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     tab_printer(args)
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
-    model = GraphStar(num_features=num_features, num_node_class=num_node_class,
+    model = GraphStar(num_features=num_features, num_relations2=num_relations, num_node_class=num_node_class,
                       num_graph_class=num_graph_class, hid=args.hidden, num_star=args.num_star,
                       star_init_method=args.star_init_method, link_prediction=link_prediction,
                       heads=args.heads, cross_star=args.cross_star, num_layers=args.num_layers,
