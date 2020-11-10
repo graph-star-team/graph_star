@@ -14,10 +14,15 @@ from module.graph_star import GraphStar
 def get_edge_info(data, type):
     attr = "edge_" + type + "_mask"
     edge_index = data.edge_index[:, getattr(data, attr)] if hasattr(data, attr) else data.edge_index
-    edge_type = None
-    attr = "edge_" + type + "_attr_mask"
-    edge_type = data.edge_attr[getattr(data, attr)] if hasattr(data, attr) else data.edge_attr
-    return edge_index, edge_type
+    edge_type = []
+    for pair in edge_index.T:
+        edge_attrs = data.edge_attr[np.where(data.edge_index.T == pair)[0]]
+        if  len(edge_attrs) > 0:
+            edge_attrs = torch.tensor(edge_attrs[0], dtype=torch.float)
+        else:
+            edge_attrs =  torch.tensor([], dtype=torch.float)
+        edge_type.append(torch.tensor(edge_attrs, dtype=torch.long))
+    return edge_index, torch.LongTensor(edge_type)
 
 
 train_neg_sampling_queue = None
@@ -72,9 +77,13 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                     print("train neg sampling queue is empty,waiting...")
                 nei, net = train_neg_sampling_queue.get()
             else:
+                '''
                 if test_neg_sampling_queue is None:
                     test_neg_sampling_queue = Queue(maxsize=30)
                     val_neg_sampling_queue = Queue(maxsize=30)
+                    print(f"edge_index[0]: {data.edge_index[0].shape}")
+                    print(f"edge_index[1]: {data.edge_index[1].shape}")
+                    print(f"edge_attr: {data.edge_attr.shape}")
                     test_true_tuples = torch.stack([data.edge_index[0], data.edge_attr, data.edge_index[1]],
                                                    dim=0).t().cpu().numpy()
                     test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
@@ -82,8 +91,10 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                     #                    test_neg_sampling_queue, 5)
                     # build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
                     #                    val_neg_sampling_queue, 5)
+                    
                 # if test_neg_sampling_queue.empty():
                 #     print("test neg sampling queue is empty,waiting...")
+                '''
                 if mode == "val":
                     nei, net = data.val_neg_edge_index, data.val_neg_edge_index.new_zeros(
                         (data.val_neg_edge_index.size(-1),))
@@ -158,9 +169,11 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
 
 
 def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=False,
-            num_features=0, num_relations=1, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
+            num_features=0, relation_dimension=0, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
             save_per_epoch=100, load_model=False, cal_mrr_score=False,
             node_multi_label=False, graph_multi_label=False, link_prediction=False):
+    print(relation_dimension)
+
     if transductive:
         train = train_transductive
     else:
@@ -172,7 +185,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     tab_printer(args)
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
-    model = GraphStar(num_features=num_features, num_relations2=num_relations, num_node_class=num_node_class,
+    model = GraphStar(num_features=num_features, relation_dimension=relation_dimension, num_node_class=num_node_class,
                       num_graph_class=num_graph_class, hid=args.hidden, num_star=args.num_star,
                       star_init_method=args.star_init_method, link_prediction=link_prediction,
                       heads=args.heads, cross_star=args.cross_star, num_layers=args.num_layers,

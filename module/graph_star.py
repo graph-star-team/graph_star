@@ -22,7 +22,7 @@ EPS = 1e-15
 
 class GraphStar(nn.Module):
     def __init__(self, num_features, num_node_class, num_graph_class, hid, num_star=4, cross_star=False, heads=6,
-                 num_relations=18, num_relations2=0, one_hot_node=True, one_hot_node_num=0, star_init_method="attn",
+                 num_relations=18, relation_dimension=0, one_hot_node=True, one_hot_node_num=0, star_init_method="attn",
                  link_prediction=False, coef_dropout=0.2,
                  dropout=0.1, residual=True, residual_star=True, layer_norm=True, layer_norm_star=True, use_e=True,
                  num_layers=3, cross_layer=False, activation=None, additional_self_loop_relation_type=False,
@@ -110,13 +110,14 @@ class GraphStar(nn.Module):
         self.gcl1 = nn.Linear(hid * 2, hid)
         self.gcl2 = nn.Linear(hid, hid // 2)
         self.gcl3 = nn.Linear(hid // 2, num_graph_class)
+        print(relation_dimension)
 
         if cross_layer:
             self.cross_layer_attn = CrossLayerAttn(heads=heads, use_star=False, cross_star=False, in_channels=hid,
                                                    out_channels=hid, dropout=dropout, coef_dropout=coef_dropout,
                                                    residual=False, layer_norm=layer_norm_star)
-        self.rl = nn.Linear(num_relations2, hid)
-        self.RW = Parameter(torch.empty(num_relations2, hid).uniform_(-0.1, 0.1))
+        self.rl = nn.Linear(relation_dimension, hid)
+        self.RW = Parameter(torch.empty(relation_dimension, hid).uniform_(-0.1, 0.1))
         self.LP_loss = nn.BCEWithLogitsLoss()
 
     def forward(self, x, edge_index, batch, star=None, y=None, edge_type=None):
@@ -242,6 +243,13 @@ class GraphStar(nn.Module):
 
     def lp_score(self, z, edge_index, edge_type):
         z = F.dropout(z, 0.5, training=self.training)
+        '''
+        print(f"RW: {self.RW}")
+        print(f"Shape RW: {self.RW.shape}")
+        print(f"edge_type shape: {edge_type.shape}")
+        print(f"edge_index shape: {edge_index.shape}")
+        print(f"z: {z}, edge_index: {edge_index}, edge_type: {edge_type}")
+        '''
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
