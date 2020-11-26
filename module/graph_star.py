@@ -110,7 +110,6 @@ class GraphStar(nn.Module):
         self.gcl1 = nn.Linear(hid * 2, hid)
         self.gcl2 = nn.Linear(hid, hid // 2)
         self.gcl3 = nn.Linear(hid // 2, num_graph_class)
-        print(relation_dimension)
 
         if cross_layer:
             self.cross_layer_attn = CrossLayerAttn(heads=heads, use_star=False, cross_star=False, in_channels=hid,
@@ -250,11 +249,12 @@ class GraphStar(nn.Module):
         print(f"edge_index shape: {edge_index.shape}")
         print(f"z: {z}, edge_index: {edge_index}, edge_type: {edge_type}")
         '''
+
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
                                             )
-
+        print("Calculated loss")    
         return pred
 
     def lp_log(self, z, pos_edge_index, pos_edge_type, known_edge_index, known_edge_type):
@@ -318,8 +318,10 @@ class GraphStar(nn.Module):
         for i in range(self.num_star):
             col = b1 + i
             edge_index = torch.cat([edge_index, torch.stack([row, col], dim=0)], dim=1)
-            edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.node_to_star_relation_type)])
-
+            print(edge_index)
+            print(x_size)
+            print(edge_type)
+            #edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.node_to_star_relation_type)])
         return edge_index, edge_type
 
     def add_self_loop_edge(self, edge_index, edge_type, x_size):
@@ -327,8 +329,10 @@ class GraphStar(nn.Module):
         tmp = torch.arange(0, x_size, dtype=dtype, device=device)
         tmp = torch.stack([tmp, tmp], dim=0)
         edge_index = torch.cat([edge_index, tmp], dim=1)
-
-        edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.self_loop_relation_type)], dim=0)
+        print(edge_index)
+        print(x_size)
+        print(edge_type)
+        #edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.self_loop_relation_type)], dim=0)
         return edge_index, edge_type
 
     def DistMult(self, head, relation, tail):

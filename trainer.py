@@ -12,17 +12,32 @@ from module.graph_star import GraphStar
 
 
 def get_edge_info(data, type):
+    '''
     attr = "edge_" + type + "_mask"
     edge_index = data.edge_index[:, getattr(data, attr)] if hasattr(data, attr) else data.edge_index
-    edge_type = []
+    print(getattr(data, attr))
+    edge_type = data.edge_attr[getattr(data, attr)] if hasattr(data, attr) else data.edge_type
+    
+    edge_type = None
+    N = len(edge_index.T)
+    print(f"N = {N}")
+    i = 0
     for pair in edge_index.T:
         edge_attrs = data.edge_attr[np.where(data.edge_index.T == pair)[0]]
         if  len(edge_attrs) > 0:
-            edge_attrs = torch.tensor(edge_attrs[0], dtype=torch.float)
+            edge_attrs = edge_attrs[0].clone().detach()
         else:
             edge_attrs =  torch.tensor([], dtype=torch.float)
-        edge_type.append(torch.tensor(edge_attrs, dtype=torch.long))
-    return edge_index, torch.LongTensor(edge_type)
+        if edge_type == None:
+            edge_type = edge_attrs
+        else:
+            edge_type = torch.cat((edge_type, edge_attrs), dim=0)
+        i += 1
+        if i % 100 == 0:
+            print(f"{i}/{N}")
+    print("Got edge info") 
+    '''   
+    return data.edge_index, data.edge_attr
 
 
 train_neg_sampling_queue = None
@@ -172,7 +187,6 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
             num_features=0, relation_dimension=0, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
             save_per_epoch=100, load_model=False, cal_mrr_score=False,
             node_multi_label=False, graph_multi_label=False, link_prediction=False):
-    print(relation_dimension)
 
     if transductive:
         train = train_transductive

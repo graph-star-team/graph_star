@@ -58,11 +58,10 @@ def load_data():
                                      torch.ones((data.test_pos_edge_index.size(-1)))], dim=0).byte()
 
     data.edge_type = torch.zeros(((data.edge_index.size(-1)),)).long()
-
     data.batch = torch.zeros((1, data.num_nodes), dtype=torch.int64).view(-1)
     data.num_graphs = 1
     num_features = dataset.x.shape[-1] 
-    relation_dimension = max(relations) + 1
+    relation_dimension = relations.shape[-1]
     return data, num_features, relation_dimension
 
 
