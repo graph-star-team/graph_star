@@ -115,8 +115,8 @@ class GraphStar(nn.Module):
             self.cross_layer_attn = CrossLayerAttn(heads=heads, use_star=False, cross_star=False, in_channels=hid,
                                                    out_channels=hid, dropout=dropout, coef_dropout=coef_dropout,
                                                    residual=False, layer_norm=layer_norm_star)
-        self.rl = nn.Linear(relation_dimension, hid)
-        self.RW = Parameter(torch.empty(relation_dimension, hid).uniform_(-0.1, 0.1))
+        self.rl = nn.Linear(num_relations, hid)
+        self.RW = Parameter(torch.empty(num_relations, hid).uniform_(-0.1, 0.1))
         self.LP_loss = nn.BCEWithLogitsLoss()
 
     def forward(self, x, edge_index, batch, star=None, y=None, edge_type=None):
@@ -242,19 +242,11 @@ class GraphStar(nn.Module):
 
     def lp_score(self, z, edge_index, edge_type):
         z = F.dropout(z, 0.5, training=self.training)
-        '''
-        print(f"RW: {self.RW}")
-        print(f"Shape RW: {self.RW.shape}")
-        print(f"edge_type shape: {edge_type.shape}")
-        print(f"edge_index shape: {edge_index.shape}")
-        print(f"z: {z}, edge_index: {edge_index}, edge_type: {edge_type}")
-        '''
 
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
                                             )
-        print("Calculated loss")    
         return pred
 
     def lp_log(self, z, pos_edge_index, pos_edge_type, known_edge_index, known_edge_type):
@@ -306,6 +298,9 @@ class GraphStar(nn.Module):
     def lp_loss(self, pred, y):
         return self.LP_loss(pred.squeeze(1), y)
 
+    def predict(self, logit):
+        return torch.sigmoid(logit.squeeze(1))
+
     def lp_test(self, pred, y):
         y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
@@ -318,10 +313,7 @@ class GraphStar(nn.Module):
         for i in range(self.num_star):
             col = b1 + i
             edge_index = torch.cat([edge_index, torch.stack([row, col], dim=0)], dim=1)
-            print(edge_index)
-            print(x_size)
-            print(edge_type)
-            #edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.node_to_star_relation_type)])
+            edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.node_to_star_relation_type)])
         return edge_index, edge_type
 
     def add_self_loop_edge(self, edge_index, edge_type, x_size):
@@ -329,13 +321,11 @@ class GraphStar(nn.Module):
         tmp = torch.arange(0, x_size, dtype=dtype, device=device)
         tmp = torch.stack([tmp, tmp], dim=0)
         edge_index = torch.cat([edge_index, tmp], dim=1)
-        print(edge_index)
-        print(x_size)
-        print(edge_type)
-        #edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.self_loop_relation_type)], dim=0)
+        edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.self_loop_relation_type)], dim=0)
         return edge_index, edge_type
 
     def DistMult(self, head, relation, tail):
+        # Check dimensionality of inputs
         score = head * relation * tail
 
         return score.sum(dim=2)

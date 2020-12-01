@@ -37,7 +37,9 @@ def get_edge_info(data, type):
             print(f"{i}/{N}")
     print("Got edge info") 
     '''   
-    return data.edge_index, data.edge_attr
+    # Originaly list of zeroes, now list of labelencoded relationships
+    # TODO: SPLIT TO TRAIN, VAL, TEST
+    return data.edge_index, data.edge_type
 
 
 train_neg_sampling_queue = None
@@ -109,7 +111,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                     
                 # if test_neg_sampling_queue.empty():
                 #     print("test neg sampling queue is empty,waiting...")
-                '''
+                
                 if mode == "val":
                     nei, net = data.val_neg_edge_index, data.val_neg_edge_index.new_zeros(
                         (data.val_neg_edge_index.size(-1),))
@@ -118,11 +120,12 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                     nei, net = data.test_neg_edge_index, data.test_neg_edge_index.new_zeros(
                         (data.test_neg_edge_index.size(-1),))
                     # nei, net = test_neg_sampling_queue.get()
-
+                '''
             nei, net = nei.to(pei.device), net.to(pei.device)
             ei = torch.cat([pei, nei], dim=-1)
             et = torch.cat([pet, net], dim=-1)
-
+            # TODO: Need to save logits, edge index and edge type
+            print(f"logits dimension: {logits_lp.size()}")
             pred = model.lp_score(logits_lp, ei, et)
             y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
 
@@ -206,7 +209,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
                       cross_layer=args.cross_layer, dropout=args.dropout, coef_dropout=args.coef_dropout,
                       residual=args.residual,
                       residual_star=args.residual_star, layer_norm=args.layer_norm, activation=args.activation,
-                      layer_norm_star=args.layer_norm_star, use_e=args.use_e, num_relations=args.num_relations,
+                      layer_norm_star=args.layer_norm_star, use_e=args.use_e, num_relations=relation_dimension,
                       one_hot_node=args.one_hot_node, one_hot_node_num=args.one_hot_node_num,
                       relation_score_function=args.relation_score_function,
                       additional_self_loop_relation_type=args.additional_self_loop_relation_type,
@@ -241,13 +244,15 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     max_gc_epoch_idx = 0
 
     for epoch in range(0, max_epoch + 1):
+        start = time.time()
         train_loss, train_node_acc, train_graph_acc, train_lp_auc, train_lp_ap = \
             train(model, optimizer, train_loader,
                   args.device,
                   node_multi_label,
                   graph_multi_label,
                   link_prediction, mode="train")
-        if epoch % val_per_epoch == 0:
+        
+        if epoch % val_per_epoch == 0 and False: #TODO: undo break
             val_loss, val_node_acc, val_graph_acc, val_lp_auc, val_lp_ap = \
                 train(model, optimizer, val_loader,
                       args.device,
@@ -256,7 +261,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
                       link_prediction, mode="val", cal_mrr_score=cal_mrr_score)
         else:
             val_loss, val_node_acc, val_graph_acc, val_lp_auc, val_lp_ap = 0, 0, 0, 0, 0
-        if epoch % test_per_epoch == 0:
+        if epoch % test_per_epoch == 0 and False: #TODO undo break
             test_loss, test_node_acc, test_graph_acc, test_lp_auc, test_lp_ap = \
                 train(model, optimizer, test_loader,
                       args.device,
@@ -293,7 +298,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
         log_str = 'Epoch: {:02d}, TRAIN Loss: {:.4f}, {} || VAL Loss: {:.4f}, {} || TEST Loss: {:.4f}, {} || Max {}'.format(
             epoch, train_loss, train_str, val_loss, val_str, test_loss, test_str, max_str)
         print("\033[1;32m", DATASET, "\033[0m", log_str)
-        # print("use time : %f" % (time.time()-start))
+        print("use time : %f" % (time.time()-start))
         if epoch % save_per_epoch == 0:
             torch.save(model, os.path.join("output", DATASET + ".pkl"))
         scheduler.step(train_loss)

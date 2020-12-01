@@ -152,6 +152,10 @@ class GraphStarConv(MessagePassing):
         xv_list = []
         for i in range(self.num_relations):
             edge_index_mask = (edge_type == i)
+            '''
+            print(edge_index_mask.size())
+            print(edge_index[0].size())
+            '''
             if i == self.self_loop_relation_type:
                 num_self_relation = edge_index_mask.sum()
             elif i == self.node_to_star_relation_type:

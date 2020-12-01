@@ -42,7 +42,9 @@ def load_data():
     embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding.kv')
 
     dataset.x = torch.tensor(embedded_nodes.vectors, dtype=torch.float)
-    data = GAE.split_edges(GAE, dataset)
+    print(dataset)
+    
+    '''data = GAE.split_edges(GAE, dataset)
     
 
     data.edge_index = torch.cat([data.train_pos_edge_index, data.val_pos_edge_index, data.test_pos_edge_index], dim=1)
@@ -56,12 +58,24 @@ def load_data():
     data.edge_test_mask = torch.cat([torch.zeros((data.train_pos_edge_index.size(-1))),
                                      torch.zeros((data.val_pos_edge_index.size(-1))),
                                      torch.ones((data.test_pos_edge_index.size(-1)))], dim=0).byte()
-
-    data.edge_type = torch.zeros(((data.edge_index.size(-1)),)).long()
+    '''
+    data = dataset
+    data.edge_type = torch.LongTensor(relations) #torch.zeros(((data.edge_index.size(-1)),)).long()
     data.batch = torch.zeros((1, data.num_nodes), dtype=torch.int64).view(-1)
     data.num_graphs = 1
     num_features = dataset.x.shape[-1] 
-    relation_dimension = relations.shape[-1]
+    relation_dimension = len(np.unique(relations))
+    print(f"no. unique relations: {relation_dimension}")
+    print(f"no. edge_type size: {data.edge_type.size()}")
+    print(f"no. relation size: {relations.shape}")
+    print(f"edge_index size: {data.edge_index.size()}")
+    print(f"min: {np.min(relations)}")
+    print(f"min: {np.max(relations)}")
+
+    #print(f"no.  relations: {len(data.edge_type)}")
+
+    
+
     return data, num_features, relation_dimension
 
 
