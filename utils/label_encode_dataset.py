@@ -14,13 +14,13 @@ def label_encode_dataset(all_entities, all_relations, data):
     le_entity.fit(all_entities)
 
     # fit relationship encoder
-    ohe_relation = LabelEncoder()
-    ohe_relation.fit(all_relations.reshape(-1, 1))
+    le_relation = LabelEncoder()
+    le_relation.fit(all_relations.reshape(-1, 1))
 
     # string list to int array using LabelEncoder on complete data set
     subjects = le_entity.transform(subjects)
     objects = le_entity.transform(objects)
-    relations = ohe_relation.transform(relations)
+    relations = le_relation.transform(relations)
     
     # encode subsample (change range to 0-N)
     le_entity2 = LabelEncoder().fit(np.append(subjects,objects))

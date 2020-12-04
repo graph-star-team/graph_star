@@ -37,7 +37,7 @@ def get_edge_info(data, type):
             print(f"{i}/{N}")
     print("Got edge info") 
     '''   
-    # Originaly list of zeroes, now list of labelencoded relationships
+    # Originally list of zeroes, now list of labelencoded relationships
     # TODO: SPLIT TO TRAIN, VAL, TEST
     return data.edge_index, data.edge_type
 
@@ -126,6 +126,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
             et = torch.cat([pet, net], dim=-1)
             # TODO: Need to save logits, edge index and edge type
             print(f"logits dimension: {logits_lp.size()}")
+            model.updateZ(logits_lp)
             pred = model.lp_score(logits_lp, ei, et)
             y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
 

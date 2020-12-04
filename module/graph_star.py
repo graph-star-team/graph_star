@@ -43,6 +43,7 @@ class GraphStar(nn.Module):
         self.coef_dropout = coef_dropout
         assert star_init_method in ["mean", "attn"], "star init method must be mean or attn"
         self.star_init_method = star_init_method
+        self.z = None
 
         self.gamma = nn.Parameter(
             torch.Tensor([24.0]),
@@ -126,7 +127,7 @@ class GraphStar(nn.Module):
         else:
             tw.val_steps += 1
         num_node = x.size(0)
-        num_graph = len(torch.bincount(batch))
+        num_graph = 1 #TODO: Don't know why it should be: len(torch.bincount(batch))
         _edge_index = edge_index
 
         if self.one_hot_node:
@@ -242,7 +243,12 @@ class GraphStar(nn.Module):
 
     def lp_score(self, z, edge_index, edge_type):
         z = F.dropout(z, 0.5, training=self.training)
-
+        print(f"z size: {z.size()}")
+        print(f"edge_index size: {edge_index.size()}")
+        print(f"edge_type size: {edge_type.size()}")
+        print(f"z: {z}")
+        print(f"edge_index: {edge_index}")
+        print(f"edge_type: {edge_type}")
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
@@ -330,6 +336,8 @@ class GraphStar(nn.Module):
 
         return score.sum(dim=2)
 
-    def predict(self, head, tail):
-        self.eval()
-        _, pred = model(data).max(dim=1)
+    def updateZ(self, z):
+        self.z = z
+    
+    def getZ(self):
+        return self.z

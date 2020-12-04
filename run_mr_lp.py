@@ -82,11 +82,23 @@ def load_data():
 def main(_args):
     print("@@@@@@@@@@@@@@@@ Multi-Relational Link Prediction @@@@@@@@@@@@@@@@")
     args = gap.parser.parse_args(_args)
-    args.dataset = 'FB15K_2'
+    args.dataset = 'FB15K_1024_Hid'
     data, num_features, relation_dimension = load_data()
     gap.tab_printer(data)
     print("\n=================== Run Trainer ===================\n")
-    
+    # Auto run for pyCharm
+    '''
+    args.dropout = 0
+    args.hidden = 1024
+    args.l2 = 5e-4
+    args.num_layers = 3
+    args.cross_layer = False
+    args.patience = 500
+    args.residual = True
+    args.residual_star = True
+    args.epochs = 10
+    args.device = 'cpu'
+    '''
     trainer.trainer(args, args.dataset, [data], [data], [data], transductive=True,
                     num_features=num_features, relation_dimension=relation_dimension,
                     max_epoch=args.epochs, num_node_class=0,
