@@ -19,7 +19,6 @@ def get_edge_info(data, type):
     edge_type = getattr(data, attr) if hasattr(data, attr) else data.edge_type
     
     # Originally list of zeroes, now list of labelencoded relationships
-    # TODO: SPLIT TO TRAIN, VAL, TEST
     return edge_index, edge_type
 
 
@@ -78,7 +77,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                 if test_neg_sampling_queue is None:
                     test_neg_sampling_queue = Queue(maxsize=30)
                     val_neg_sampling_queue = Queue(maxsize=30)
-                    test_true_tuples = torch.stack([data.edge_index[0], data.edge_attr, data.edge_index[1]],
+                    test_true_tuples = torch.stack([data.edge_index[0], data.edge_type, data.edge_index[1]],
                                                    dim=0).t().cpu().numpy()
                     test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
                     #build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
@@ -110,7 +109,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
             loss = loss_ if loss is None else loss + loss_
             lp_auc, lp_ap = model.lp_test(pred, y)
             if (mode == "val") and cal_mrr_score:
-                model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_attr)
+                model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
 
         total_loss += loss.item() * num_graphs
         if mode == "train":
@@ -145,12 +144,12 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
         if mode == "train":
             logits_node, logits_star, logits_lp = \
                 model(data.x, data.edge_index, data.batch, star=star_seed,
-                      edge_type=data.edge_attr if hasattr(data, "edge_attr") else None)
+                      edge_type=data.edge_type if hasattr(data, "edge_type") else None)
         else:
             with torch.no_grad():
                 logits_node, logits_star, logits_lp = \
                     model(data.x, data.edge_index, data.batch, star=star_seed,
-                          edge_type=data.edge_attr if hasattr(data, "edge_attr") else None)
+                          edge_type=data.edge_type if hasattr(data, "edge_type") else None)
 
         loss = None
         total_loss += loss.item() * num_graphs
