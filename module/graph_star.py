@@ -243,12 +243,6 @@ class GraphStar(nn.Module):
 
     def lp_score(self, z, edge_index, edge_type):
         z = F.dropout(z, 0.5, training=self.training)
-        print(f"z size: {z.size()}")
-        print(f"edge_index size: {edge_index.size()}")
-        print(f"edge_type size: {edge_type.size()}")
-        print(f"z: {z}")
-        print(f"edge_index: {edge_index}")
-        print(f"edge_type: {edge_type}")
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)

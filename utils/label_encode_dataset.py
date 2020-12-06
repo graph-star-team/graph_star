@@ -32,7 +32,7 @@ def label_encode_dataset(all_entities, all_relations, data):
     relations = le_rel.transform(relations)
 
     
-    edge_attributes = torch.tensor(relations, dtype=torch.float)
+    edge_attributes = torch.tensor(relations, dtype=torch.long)
     edge_index = torch.tensor([subjects, objects], dtype=torch.long)
     unique_entities = torch.tensor(np.unique(edge_index.reshape(edge_index.shape[-1]*2, 1)), dtype=torch.float)
 

@@ -12,34 +12,15 @@ from module.graph_star import GraphStar
 
 
 def get_edge_info(data, type):
-    '''
     attr = "edge_" + type + "_mask"
     edge_index = data.edge_index[:, getattr(data, attr)] if hasattr(data, attr) else data.edge_index
-    print(getattr(data, attr))
-    edge_type = data.edge_attr[getattr(data, attr)] if hasattr(data, attr) else data.edge_type
+
+    attr = type + "_edge_type" 
+    edge_type = getattr(data, attr) if hasattr(data, attr) else data.edge_type
     
-    edge_type = None
-    N = len(edge_index.T)
-    print(f"N = {N}")
-    i = 0
-    for pair in edge_index.T:
-        edge_attrs = data.edge_attr[np.where(data.edge_index.T == pair)[0]]
-        if  len(edge_attrs) > 0:
-            edge_attrs = edge_attrs[0].clone().detach()
-        else:
-            edge_attrs =  torch.tensor([], dtype=torch.float)
-        if edge_type == None:
-            edge_type = edge_attrs
-        else:
-            edge_type = torch.cat((edge_type, edge_attrs), dim=0)
-        i += 1
-        if i % 100 == 0:
-            print(f"{i}/{N}")
-    print("Got edge info") 
-    '''   
     # Originally list of zeroes, now list of labelencoded relationships
     # TODO: SPLIT TO TRAIN, VAL, TEST
-    return data.edge_index, data.edge_type
+    return edge_index, edge_type
 
 
 train_neg_sampling_queue = None
@@ -48,7 +29,7 @@ val_neg_sampling_queue = None
 
 
 def train_transductive(model, optimizer, loader, device, node_multi_label,
-                       graph_multi_label, link_prediction, mode="train", cal_mrr_score=False):
+                       graph_multi_label, link_prediction, mode="train", cal_mrr_score=True):
     global train_neg_sampling_queue, test_neg_sampling_queue, val_neg_sampling_queue
     if mode == "train":
         model.train()
@@ -93,21 +74,17 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                 if train_neg_sampling_queue.empty():
                     print("train neg sampling queue is empty,waiting...")
                 nei, net = train_neg_sampling_queue.get()
-            else:
-                '''
+            else:     
                 if test_neg_sampling_queue is None:
                     test_neg_sampling_queue = Queue(maxsize=30)
                     val_neg_sampling_queue = Queue(maxsize=30)
-                    print(f"edge_index[0]: {data.edge_index[0].shape}")
-                    print(f"edge_index[1]: {data.edge_index[1].shape}")
-                    print(f"edge_attr: {data.edge_attr.shape}")
                     test_true_tuples = torch.stack([data.edge_index[0], data.edge_attr, data.edge_index[1]],
                                                    dim=0).t().cpu().numpy()
                     test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
-                    # build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
+                    #build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
                     #                    test_neg_sampling_queue, 5)
-                    # build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
-                    #                    val_neg_sampling_queue, 5)
+                    #build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
+                    #                   val_neg_sampling_queue, 5)
                     
                 # if test_neg_sampling_queue.empty():
                 #     print("test neg sampling queue is empty,waiting...")
@@ -120,12 +97,11 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                     nei, net = data.test_neg_edge_index, data.test_neg_edge_index.new_zeros(
                         (data.test_neg_edge_index.size(-1),))
                     # nei, net = test_neg_sampling_queue.get()
-                '''
+                
             nei, net = nei.to(pei.device), net.to(pei.device)
             ei = torch.cat([pei, nei], dim=-1)
             et = torch.cat([pet, net], dim=-1)
             # TODO: Need to save logits, edge index and edge type
-            print(f"logits dimension: {logits_lp.size()}")
             model.updateZ(logits_lp)
             pred = model.lp_score(logits_lp, ei, et)
             y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
@@ -133,7 +109,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
             loss_ = model.lp_loss(pred, y)
             loss = loss_ if loss is None else loss + loss_
             lp_auc, lp_ap = model.lp_test(pred, y)
-            if not mode == "train" and cal_mrr_score:
+            if (mode == "val") and cal_mrr_score:
                 model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_attr)
 
         total_loss += loss.item() * num_graphs
@@ -147,7 +123,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
 
 
 def train_inductive(model, optimizer, loader, device, node_multi_label,
-                    graph_multi_label, link_prediction, mode="train", cal_mrr_score=False):
+                    graph_multi_label, link_prediction, mode="train", cal_mrr_score=True):
     if mode == "train":
         model.train()
     else:
@@ -189,7 +165,7 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
 
 def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=False,
             num_features=0, relation_dimension=0, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
-            save_per_epoch=100, load_model=False, cal_mrr_score=False,
+            save_per_epoch=100, load_model=False, cal_mrr_score=True,
             node_multi_label=False, graph_multi_label=False, link_prediction=False):
 
     if transductive:
@@ -253,7 +229,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
                   graph_multi_label,
                   link_prediction, mode="train")
         
-        if epoch % val_per_epoch == 0 and False: #TODO: undo break
+        if epoch % val_per_epoch == 0: #TODO: undo break
             val_loss, val_node_acc, val_graph_acc, val_lp_auc, val_lp_ap = \
                 train(model, optimizer, val_loader,
                       args.device,
@@ -262,7 +238,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
                       link_prediction, mode="val", cal_mrr_score=cal_mrr_score)
         else:
             val_loss, val_node_acc, val_graph_acc, val_lp_auc, val_lp_ap = 0, 0, 0, 0, 0
-        if epoch % test_per_epoch == 0 and False: #TODO undo break
+        if epoch % test_per_epoch == 0: #TODO undo break
             test_loss, test_node_acc, test_graph_acc, test_lp_auc, test_lp_ap = \
                 train(model, optimizer, test_loader,
                       args.device,
