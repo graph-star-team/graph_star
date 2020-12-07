@@ -152,6 +152,7 @@ class GraphStarConv(MessagePassing):
         xv_list = []
         for i in range(self.num_relations):
             edge_index_mask = (edge_type == i)
+            
             if i == self.self_loop_relation_type:
                 num_self_relation = edge_index_mask.sum()
             elif i == self.node_to_star_relation_type:
@@ -162,6 +163,8 @@ class GraphStarConv(MessagePassing):
                 edge_index_j = edge_index[1][edge_index_mask]
 
                 # 同样的功能，只是根据稀疏程度决定运算顺序以提高性能
+                # The same function, but the order of operations is 
+                # determined according to the degree of sparsity to improve performance
                 if edge_index_mask.sum() < num_nodes:
                     xi = torch.index_select(x, 0, edge_index_i)
                     xj = torch.index_select(x, 0, edge_index_j)

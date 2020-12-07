@@ -22,7 +22,7 @@ EPS = 1e-15
 
 class GraphStar(nn.Module):
     def __init__(self, num_features, num_node_class, num_graph_class, hid, num_star=4, cross_star=False, heads=6,
-                 num_relations=18, one_hot_node=True, one_hot_node_num=0, star_init_method="attn",
+                 num_relations=18, relation_dimension=0, one_hot_node=True, one_hot_node_num=0, star_init_method="attn",
                  link_prediction=False, coef_dropout=0.2,
                  dropout=0.1, residual=True, residual_star=True, layer_norm=True, layer_norm_star=True, use_e=True,
                  num_layers=3, cross_layer=False, activation=None, additional_self_loop_relation_type=False,
@@ -43,6 +43,7 @@ class GraphStar(nn.Module):
         self.coef_dropout = coef_dropout
         assert star_init_method in ["mean", "attn"], "star init method must be mean or attn"
         self.star_init_method = star_init_method
+        self.z = None
 
         self.gamma = nn.Parameter(
             torch.Tensor([24.0]),
@@ -126,7 +127,7 @@ class GraphStar(nn.Module):
         else:
             tw.val_steps += 1
         num_node = x.size(0)
-        num_graph = len(torch.bincount(batch))
+        num_graph = 1 #TODO: Don't know why it should be: len(torch.bincount(batch))
         _edge_index = edge_index
 
         if self.one_hot_node:
@@ -246,7 +247,6 @@ class GraphStar(nn.Module):
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
                                             )
-
         return pred
 
     def lp_log(self, z, pos_edge_index, pos_edge_type, known_edge_index, known_edge_type):
@@ -298,6 +298,9 @@ class GraphStar(nn.Module):
     def lp_loss(self, pred, y):
         return self.LP_loss(pred.squeeze(1), y)
 
+    def predict(self, logit):
+        return torch.sigmoid(logit.squeeze(1))
+
     def lp_test(self, pred, y):
         y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
@@ -311,7 +314,6 @@ class GraphStar(nn.Module):
             col = b1 + i
             edge_index = torch.cat([edge_index, torch.stack([row, col], dim=0)], dim=1)
             edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.node_to_star_relation_type)])
-
         return edge_index, edge_type
 
     def add_self_loop_edge(self, edge_index, edge_type, x_size):
@@ -319,11 +321,17 @@ class GraphStar(nn.Module):
         tmp = torch.arange(0, x_size, dtype=dtype, device=device)
         tmp = torch.stack([tmp, tmp], dim=0)
         edge_index = torch.cat([edge_index, tmp], dim=1)
-
         edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.self_loop_relation_type)], dim=0)
         return edge_index, edge_type
 
     def DistMult(self, head, relation, tail):
+        # Check dimensionality of inputs
         score = head * relation * tail
 
         return score.sum(dim=2)
+
+    def updateZ(self, z):
+        self.z = z
+    
+    def getZ(self):
+        return self.z

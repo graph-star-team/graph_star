@@ -133,4 +133,5 @@ tensorboard/
 output
 
 #Block data
-data/
+data/*
+!data/FB15k/
