@@ -73,42 +73,73 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                 if train_neg_sampling_queue.empty():
                     print("train neg sampling queue is empty,waiting...")
                 nei, net = train_neg_sampling_queue.get()
-            else:     
-                if test_neg_sampling_queue is None:
+
+            elif mode == "val":  
+                print("Validation")  
+                '''
+                if val_neg_sampling_queue is None:
                     test_neg_sampling_queue = Queue(maxsize=30)
                     val_neg_sampling_queue = Queue(maxsize=30)
-                    test_true_tuples = torch.stack([data.edge_index[0], data.edge_type, data.edge_index[1]],
-                                                   dim=0).t().cpu().numpy()
+                    test_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
                     test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
-                    #build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
-                    #                    test_neg_sampling_queue, 5)
-                    #build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
-                    #                   val_neg_sampling_queue, 5)
-                    
-                # if test_neg_sampling_queue.empty():
-                #     print("test neg sampling queue is empty,waiting...")
+                    build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
+                                        val_neg_sampling_queue, 5)
                 
-                if mode == "val":
-                    nei, net = data.val_neg_edge_index, data.val_neg_edge_index.new_zeros(
-                        (data.val_neg_edge_index.size(-1),))
-                    # nei, net = val_neg_sampling_queue.get()
-                elif mode == "test":
-                    nei, net = data.test_neg_edge_index, data.test_neg_edge_index.new_zeros(
-                        (data.test_neg_edge_index.size(-1),))
-                    # nei, net = test_neg_sampling_queue.get()
+                if val_neg_sampling_queue.empty():
+                    print("val neg sampling queue is empty,waiting...")
+
+                #nei, net = data.val_neg_edge_index, data.val_neg_edge_index.new_zeros(
+                #    (data.val_neg_edge_index.size(-1),))
+                '''
+                nei = data.val_neg_edge_index
+                print(nei)
+                lowest = min(data.edge_type) 
+                highest = max(data.edge_type)
+                net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
+                print(net)
+                #nei, net = val_neg_sampling_queue.get() 
+
+            else:
+                print("test")
+                '''
+                if test_neg_sampling_queue is None:
+                    test_neg_sampling_queue = Queue(maxsize=30)
+                    test_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
+                    test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
+                    build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
+                                        test_neg_sampling_queue, 5)
+                    
+                if test_neg_sampling_queue.empty():
+                    print("test neg sampling queue is empty,waiting...")
+                
+                #nei, net = data.test_neg_edge_index, data.test_neg_edge_index.new_zeros(
+                #    (data.test_neg_edge_index.size(-1),))
+                nei, net = test_neg_sampling_queue.get()
+                '''
+                nei = data.test_neg_edge_index
+                lowest = min(data.edge_type) 
+                highest = max(data.edge_type)
+                net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
                 
             nei, net = nei.to(pei.device), net.to(pei.device)
             ei = torch.cat([pei, nei], dim=-1)
             et = torch.cat([pet, net], dim=-1)
             # TODO: Need to save logits, edge index and edge type
+            print(f"pet: {pet.size()}")
+            print(f"pei: {pei.size()}")
+            print(f"net: {net.size()}")
+            print(f"nei: {nei.size()}")
             model.updateZ(logits_lp)
-            pred = model.lp_score(logits_lp, ei, et)
+            pred = model.lp_score(torch.sigmoid(logits_lp), ei, et)
+            print(pred)
+            print(pred.size())
+
             y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
 
             loss_ = model.lp_loss(pred, y)
             loss = loss_ if loss is None else loss + loss_
             lp_auc, lp_ap = model.lp_test(pred, y)
-            if (mode == "val") and cal_mrr_score:
+            if ((mode == "val") or (mode == "test")) and cal_mrr_score:
                 model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
 
         total_loss += loss.item() * num_graphs
@@ -255,10 +286,10 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
         if link_prediction:
             tw.writer.add_scalar('train/lp_auc', train_lp_auc, tw.train_steps)
             tw.writer.add_scalar('val/lp_auc', val_lp_auc, tw.val_steps)
-            tw.writer.add_scalar('test/lp_auc', test_lp_auc, tw.epochs)
+            tw.writer.add_scalar('test/lp_auc', test_lp_auc, tw.test_steps)
             tw.writer.add_scalar('train/lp_ap', train_lp_ap, tw.train_steps)
             tw.writer.add_scalar('val/lp_ap', val_lp_ap, tw.val_steps)
-            tw.writer.add_scalar('test/lp_ap', test_lp_ap, tw.epochs)
+            tw.writer.add_scalar('test/lp_ap', test_lp_ap, tw.test_steps)
             max_lp_auc = max(test_lp_auc, max_lp_auc)
             max_lp_ap = max(test_lp_ap, max_lp_ap)
             max_val_lp = max((val_lp_ap + val_lp_auc) / 2, max_val_lp)
@@ -269,7 +300,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
             max_str += "LP AVG: {:.4f},VAL: {:.4f} ".format(sum([max_lp_auc, max_lp_ap]) / 2, max_val_lp)
         tw.writer.add_scalar('train/loss', train_loss, tw.train_steps)
         tw.writer.add_scalar('val/loss', val_loss, tw.val_steps)
-        tw.writer.add_scalar('test/loss', test_loss, tw.epochs)
+        tw.writer.add_scalar('test/loss', test_loss, tw.test_steps)
 
         log_str = 'Epoch: {:02d}, TRAIN Loss: {:.4f}, {} || VAL Loss: {:.4f}, {} || TEST Loss: {:.4f}, {} || Max {}'.format(
             epoch, train_loss, train_str, val_loss, val_str, test_loss, test_str, max_str)
@@ -278,6 +309,9 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
         if epoch % save_per_epoch == 0:
             torch.save(model, os.path.join("output", DATASET + ".pkl"))
         scheduler.step(train_loss)
+        scheduler.step(val_loss)
+        scheduler.step(test_loss)
+
     tw.writer.close()
     return max_graph_acc, gc_accs
 
@@ -290,11 +324,11 @@ def negative_sampling(pei, pet, true_triples, num_nodes, count=1):
 
         false_head = []
         false_tail = []
-        while len(false_head) < count:
+        while len(false_head) < count//2:
             negative_sample = np.random.randint(num_nodes, size=max(count * 2, 0))
             negative_sample = [x for x in negative_sample if (x, rel, tail) not in true_triples]
             false_head.extend(negative_sample)
-        while len(false_tail) < count:
+        while len(false_tail) < count//2:
             negative_sample = np.random.randint(num_nodes, size=max(count * 2, 0))
             negative_sample = [x for x in negative_sample if (head, rel, x) not in true_triples]
             false_tail.extend(negative_sample)
@@ -302,11 +336,10 @@ def negative_sampling(pei, pet, true_triples, num_nodes, count=1):
         nei_0 = torch.cat([pei.new_full((count,), head), pei.new_tensor(false_head[:count])], dim=0)
         nei_1 = torch.cat([pei.new_tensor(false_tail[:count]), pei.new_full((count,), tail)], dim=0)
         nei = torch.stack([nei_0, nei_1], dim=0)
-        net = pei.new_full((count * 2,), rel)
+        net = pei.new_full((count,), rel)
         res_nei.append(nei)
         res_net.append(net)
     return torch.cat(res_nei, dim=-1), torch.cat(res_net, dim=-1)
-
 
 def loop_negative_sampling(pei, pet, true_tuples, num_node, count, queue):
     while True:

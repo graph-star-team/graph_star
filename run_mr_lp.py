@@ -31,8 +31,8 @@ def shuffle_dataset(dataset):
     return dataset
 
 def train_val_test_split(dataset):
-    train_size = int(np.floor(dataset.num_nodes*0.7))
-    valid_size = int(np.floor(dataset.num_nodes*0.9))
+    train_size = int(np.floor(dataset.edge_type.size(0)*0.7))
+    valid_size = int(np.floor(dataset.edge_type.size(0)*0.9))
     
     # edge_indexes
     dataset.train_pos_edge_index = dataset.edge_index.T[0:train_size].T
@@ -82,13 +82,7 @@ def load_data():
     data.num_graphs = 1
     num_features = dataset.x.shape[-1] 
     relation_dimension = len(np.unique(relations))
-    print(f"no. unique relations: {relation_dimension}")
-    print(f"no. edge_type size: {data.edge_type.size()}")
-    print(f"no. relation size: {relations.shape}")
-    print(f"edge_index size: {data.edge_index.size()}")
-    print(f"min: {np.min(relations)}")
-    print(f"min: {np.max(relations)}")
-
+    
     # Shuffle and split
     data = shuffle_dataset(data)
     data = train_val_test_split(data)    
@@ -105,6 +99,17 @@ def load_data():
                                      torch.zeros((data.val_pos_edge_index.size(-1))),
                                      torch.ones((data.test_pos_edge_index.size(-1)))], dim=0).byte()
     
+    print(f"no. unique relations: {relation_dimension}")
+    print(f"no. edge_type size: {data.edge_type.size()}")
+    print(f"no. relation size: {relations.shape}")
+    print(f"edge_index size: {data.edge_index.size()}")
+    print(f"size of training: {data.train_pos_edge_index.size()}")
+    print(f"size of validation: {data.val_pos_edge_index.size()}")
+    print(f"size of testing: {data.test_pos_edge_index.size()}")
+    print(f"min rel: {np.min(relations)}")
+    print(f"max rel: {np.max(relations)}")
+    print(f"min id: {np.min([min(data.edge_index[0]), min(data.edge_index[1])])}")
+    print(f"max id: {np.max([max(data.edge_index[0]), max(data.edge_index[1])])}")
 
     return data, num_features, relation_dimension
 
@@ -112,7 +117,7 @@ def load_data():
 def main(_args):
     print("@@@@@@@@@@@@@@@@ Multi-Relational Link Prediction @@@@@@@@@@@@@@@@")
     args = gap.parser.parse_args(_args)
-    args.dataset = 'FB15K_1024_Hid'
+    args.dataset = 'FB15K_cpu_testing'
     data, num_features, relation_dimension = load_data()
     gap.tab_printer(data)
     print("\n=================== Run Trainer ===================\n")
