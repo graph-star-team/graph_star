@@ -26,7 +26,6 @@ def shuffle_dataset(dataset):
     edge_attributes = torch.tensor(list(df[2].values), dtype=torch.long)
     edge_index = torch.tensor([list(df[0].values), list(df[1].values)], dtype=torch.long)
     dataset.edge_type = edge_attributes
-    dataset.edge_attr = edge_attributes
     dataset.edge_index = edge_index 
     return dataset
 
@@ -129,19 +128,7 @@ def main(_args):
     data, num_features, relation_dimension = load_data()
     gap.tab_printer(data)
     print("\n=================== Run Trainer ===================\n")
-    # Auto run for pyCharm
-    '''
-    args.dropout = 0
-    args.hidden = 1024
-    args.l2 = 5e-4
-    args.num_layers = 3
-    args.cross_layer = False
-    args.patience = 500
-    args.residual = True
-    args.residual_star = True
-    args.epochs = 10
-    args.device = 'cpu'
-    '''
+   
     trainer.trainer(args, args.dataset, [data], [data], [data], transductive=True,
                     num_features=num_features, relation_dimension=relation_dimension,
                     max_epoch=args.epochs, num_node_class=0,
