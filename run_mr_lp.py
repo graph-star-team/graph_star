@@ -63,13 +63,21 @@ def load_data():
     relation_id = pd.read_csv('./data/FB15k/relations.txt', sep='\t', header=None, names=['relation', 'id'], engine='python')
     relation = relation_id['relation'].values
 
-    data = pd.read_csv('./data/FB15k/valid.txt', sep='\t', header=None, names=['subject', 'object', 'relation'], engine='python')
-    print('\tLoading FB15k training (valid file) data...')
+    print('\tLoading FB15k data...')
+    # concat all data 
+    name = ['subject', 'object', 'relation']
+
+    train = pd.read_csv('./data/FB15k/train.txt', sep='\t', header=None, names=name, engine='python')
+    valid = pd.read_csv('./data/FB15k/valid.txt', sep='\t', header=None, names=name, engine='python')
+    test = pd.read_csv('./data/FB15k/test.txt', sep='\t', header=None, names=name, engine='python')
+    data = pd.concat([train, valid])
+    data = pd.concat([data, test])
     
     dataset, relations = led.label_encode_dataset(entity, relation, data)
 
     # create node embeddings if none exists
     if not osp.exists("embeddings"):
+        print('No embeddings found. Creating Node2Vec embeddings...')
         cne.create_node_embedding(dataset)
     embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding.kv')
 
