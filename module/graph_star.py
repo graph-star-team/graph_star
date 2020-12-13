@@ -125,6 +125,8 @@ class GraphStar(nn.Module):
             tw.train_steps += 1
         else:
             tw.val_steps += 1
+            tw.test_steps += 1
+
         num_node = x.size(0)
         num_graph = 1 #TODO: Don't know why it should be: len(torch.bincount(batch))
         _edge_index = edge_index

@@ -12,8 +12,8 @@ from module.graph_star import GraphStar
 
 
 def get_edge_info(data, type):
-    attr = "edge_" + type + "_mask"
-    edge_index = data.edge_index[:, getattr(data, attr)] if hasattr(data, attr) else data.edge_index
+    attr = type + "_pos_edge_index"
+    edge_index = getattr(data, attr) if hasattr(data, attr) else data.edge_index
 
     attr = type + "_edge_type" 
     edge_type = getattr(data, attr) if hasattr(data, attr) else data.edge_type
@@ -64,6 +64,11 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
         if link_prediction:
             pei, pet = get_edge_info(data, mode)
             if mode == "train":
+                nei = data.train_neg_edge_index
+                lowest = min(data.edge_type) 
+                highest = max(data.edge_type)
+                net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
+                '''
                 if train_neg_sampling_queue is None:
                     train_neg_sampling_queue = Queue(maxsize=30)
                     train_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
@@ -73,7 +78,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                 if train_neg_sampling_queue.empty():
                     print("train neg sampling queue is empty,waiting...")
                 nei, net = train_neg_sampling_queue.get()
-
+                '''
             elif mode == "val":  
                 print("Validation")  
                 '''
@@ -92,11 +97,9 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
                 #    (data.val_neg_edge_index.size(-1),))
                 '''
                 nei = data.val_neg_edge_index
-                print(nei)
                 lowest = min(data.edge_type) 
                 highest = max(data.edge_type)
                 net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
-                print(net)
                 #nei, net = val_neg_sampling_queue.get() 
 
             else:
@@ -125,14 +128,8 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
             ei = torch.cat([pei, nei], dim=-1)
             et = torch.cat([pet, net], dim=-1)
             # TODO: Need to save logits, edge index and edge type
-            print(f"pet: {pet.size()}")
-            print(f"pei: {pei.size()}")
-            print(f"net: {net.size()}")
-            print(f"nei: {nei.size()}")
             model.updateZ(logits_lp)
             pred = model.lp_score(torch.sigmoid(logits_lp), ei, et)
-            print(pred)
-            print(pred.size())
 
             y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
 
@@ -348,6 +345,7 @@ def loop_negative_sampling(pei, pet, true_tuples, num_node, count, queue):
 
 
 def build_neg_sampling(pei, pet, true_tuples, num_node, count, queue, num_thread):
+    print("building neg sampling")
     for i in range(num_thread):
         p = Process(target=loop_negative_sampling, args=(pei, pet, true_tuples, num_node, count, queue), daemon=True)
         p.start()

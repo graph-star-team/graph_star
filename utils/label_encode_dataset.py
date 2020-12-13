@@ -5,8 +5,8 @@ import torch
 
 
 def label_encode_dataset(all_entities, all_relations, data):
-    subjects = data['subject'].values
-    objects = data['object'].values
+    head = data['head'].values
+    tail = data['tail'].values
     relations = data['relation'].values
     
     # fit entity encoder
@@ -18,11 +18,12 @@ def label_encode_dataset(all_entities, all_relations, data):
     le_relation.fit(all_relations.reshape(-1, 1))
 
     # string list to int array using LabelEncoder on complete data set
-    subjects = le_entity.transform(subjects)
-    objects = le_entity.transform(objects)
+    heads = le_entity.transform(head)
+    tails = le_entity.transform(tail)
     relations = le_relation.transform(relations)
-    
+    all_relations = le_relation.transform(all_relations.reshape(-1, 1))
     # encode subsample (change range to 0-N)
+    '''
     le_entity2 = LabelEncoder().fit(np.append(subjects,objects))
     le_rel = LabelEncoder().fit(relations)
 
@@ -30,10 +31,10 @@ def label_encode_dataset(all_entities, all_relations, data):
     subjects = le_entity2.transform(subjects)
     objects = le_entity2.transform(objects)
     relations = le_rel.transform(relations)
-
+    '''
     
     edge_attributes = torch.tensor(relations, dtype=torch.long)
-    edge_index = torch.tensor([subjects, objects], dtype=torch.long)
+    edge_index = torch.tensor([heads, tails], dtype=torch.long)
     unique_entities = torch.tensor(np.unique(edge_index.reshape(edge_index.shape[-1]*2, 1)), dtype=torch.float)
 
-    return Data(x=unique_entities, edge_attr=edge_attributes, edge_index=edge_index), relations
+    return Data(x=unique_entities, edge_type=edge_attributes, edge_index=edge_index), all_relations
