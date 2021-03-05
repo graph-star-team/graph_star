@@ -26,23 +26,21 @@ def shuffle_dataset(dataset):
     edge_attributes = torch.tensor(list(df[2].values), dtype=torch.long)
     edge_index = torch.tensor([list(df[0].values), list(df[1].values)], dtype=torch.long)
     dataset.edge_type = edge_attributes
-    dataset.edge_attr = edge_attributes
     dataset.edge_index = edge_index 
     return dataset
 
-def train_val_test_split(dataset):
-    train_size = int(np.floor(dataset.num_nodes*0.7))
-    valid_size = int(np.floor(dataset.num_nodes*0.9))
+def train_val_test_split(dataset, val, test):
+   
     
     # edge_indexes
-    dataset.train_pos_edge_index = dataset.edge_index.T[0:train_size].T
-    dataset.val_pos_edge_index = dataset.edge_index.T[train_size : valid_size].T
-    dataset.test_pos_edge_index = dataset.edge_index.T[valid_size:].T
+    dataset.train_pos_edge_index = dataset.edge_index
+    dataset.val_pos_edge_index = val.edge_index
+    dataset.test_pos_edge_index = test.edge_index
     
     # relations
-    dataset.train_edge_type = dataset.edge_type[0:train_size]
-    dataset.val_edge_type = dataset.edge_type[train_size : valid_size]
-    dataset.test_edge_type = dataset.edge_type[valid_size:]
+    dataset.train_edge_type = dataset.edge_type
+    dataset.val_edge_type = val.edge_type
+    dataset.test_edge_type = test.edge_type
 
     # negatives
     neg_train = structured_negative_sampling(dataset.train_pos_edge_index)
@@ -64,16 +62,16 @@ def load_data():
     relation = relation_id['relation'].values
 
     print('\tLoading FB15k data...')
-    # concat all data 
-    name = ['subject', 'object', 'relation']
 
-    train = pd.read_csv('./data/FB15k/train.txt', sep='\t', header=None, names=name, engine='python')
-    valid = pd.read_csv('./data/FB15k/valid.txt', sep='\t', header=None, names=name, engine='python')
-    test = pd.read_csv('./data/FB15k/test.txt', sep='\t', header=None, names=name, engine='python')
-    data = pd.concat([train, valid])
-    data = pd.concat([data, test])
+    name = ['head', 'tail', 'relation']
+    train = pd.read_csv('./data/FB15k-237/train.txt', sep='\t', header=None, names=name, engine='python')
+    valid = pd.read_csv('./data/FB15k-237/valid.txt', sep='\t', header=None, names=name, engine='python')
+    test = pd.read_csv('./data/FB15k-237/test.txt', sep='\t', header=None, names=name, engine='python')
     
-    dataset, relations = led.label_encode_dataset(entity, relation, data)
+    dataset, all_relations = led.label_encode_dataset(entity, relation, train)
+    valid, all_relations = led.label_encode_dataset(entity, relation, valid)
+    test,  all_relations = led.label_encode_dataset(entity, relation, test)
+
 
     # create node embeddings if none exists
     if not osp.exists("embeddings"):
@@ -82,27 +80,21 @@ def load_data():
     embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding.kv')
 
     dataset.x = torch.tensor(embedded_nodes.vectors, dtype=torch.float)
-    print(dataset)
     
     data = dataset
-    data.edge_type = torch.LongTensor(relations) #torch.zeros(((data.edge_index.size(-1)),)).long()
     data.batch = torch.zeros((1, data.num_nodes), dtype=torch.int64).view(-1)
     data.num_graphs = 1
     num_features = dataset.x.shape[-1] 
-    relation_dimension = len(np.unique(relations))
-    print(f"no. unique relations: {relation_dimension}")
-    print(f"no. edge_type size: {data.edge_type.size()}")
-    print(f"no. relation size: {relations.shape}")
-    print(f"edge_index size: {data.edge_index.size()}")
-    print(f"min: {np.min(relations)}")
-    print(f"min: {np.max(relations)}")
-
+    relation_dimension = len(np.unique(all_relations))
+    
     # Shuffle and split
     data = shuffle_dataset(data)
-    data = train_val_test_split(data)    
-
+    data = train_val_test_split(data, valid, test)    
+    
     data.edge_index = torch.cat([data.train_pos_edge_index, data.val_pos_edge_index, data.test_pos_edge_index], dim=1)
-
+    data.edge_type = torch.cat([data.edge_type, valid.edge_type, test.edge_type], dim=0)
+    print(data.edge_index)
+    print(data.edge_type)
     data.edge_train_mask = torch.cat([torch.ones((data.train_pos_edge_index.size(-1))),
                                       torch.zeros((data.val_pos_edge_index.size(-1))),
                                       torch.zeros((data.test_pos_edge_index.size(-1)))], dim=0).byte()
@@ -113,6 +105,13 @@ def load_data():
                                      torch.zeros((data.val_pos_edge_index.size(-1))),
                                      torch.ones((data.test_pos_edge_index.size(-1)))], dim=0).byte()
     
+    print(f"no. unique relations: {relation_dimension}")
+    print(f"no. relation size: {all_relations.shape}")
+    print(f"size of training: {data.train_pos_edge_index.size()}")
+    print(f"size of validation: {data.val_pos_edge_index.size()}")
+    print(f"size of testing: {data.test_pos_edge_index.size()}")
+    print(f"min rel: {np.min(all_relations)}")
+    print(f"max rel: {np.max(all_relations)}")
 
     return data, num_features, relation_dimension
 
@@ -120,23 +119,11 @@ def load_data():
 def main(_args):
     print("@@@@@@@@@@@@@@@@ Multi-Relational Link Prediction @@@@@@@@@@@@@@@@")
     args = gap.parser.parse_args(_args)
-    args.dataset = 'FB15K_1024_Hid'
+    args.dataset = 'FB15K_cpu_testing'
     data, num_features, relation_dimension = load_data()
     gap.tab_printer(data)
     print("\n=================== Run Trainer ===================\n")
-    # Auto run for pyCharm
-    '''
-    args.dropout = 0
-    args.hidden = 1024
-    args.l2 = 5e-4
-    args.num_layers = 3
-    args.cross_layer = False
-    args.patience = 500
-    args.residual = True
-    args.residual_star = True
-    args.epochs = 10
-    args.device = 'cpu'
-    '''
+
     trainer.trainer(args, args.dataset, [data], [data], [data], transductive=True,
                     num_features=num_features, relation_dimension=relation_dimension,
                     max_epoch=args.epochs, num_node_class=0,

@@ -6,7 +6,6 @@ from torch.nn import Parameter
 from torch_geometric.nn import global_mean_pool as gap
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
-
 # from .graph_star_conv import GraphStarConv
 # from .graph_star_conv_multi_rel import GraphStarConv
 from .graph_star_conv_multi_rel_super_attn import GraphStarConv
@@ -126,6 +125,8 @@ class GraphStar(nn.Module):
             tw.train_steps += 1
         else:
             tw.val_steps += 1
+            tw.test_steps += 1
+
         num_node = x.size(0)
         num_graph = 1 #TODO: Don't know why it should be: len(torch.bincount(batch))
         _edge_index = edge_index
@@ -243,65 +244,20 @@ class GraphStar(nn.Module):
 
     def lp_score(self, z, edge_index, edge_type):
         z = F.dropout(z, 0.5, training=self.training)
+        
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             self.RW[edge_type].unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
                                             )
         return pred
 
-    def lp_log(self, z, pos_edge_index, pos_edge_type, known_edge_index, known_edge_type):
-        dt, dev = pos_edge_index.dtype, pos_edge_index.device
-        ranks = []
-
-        # head batch
-        for i in range(len(pos_edge_type)):
-            pei = torch.stack([torch.arange(0, z.size(0), dtype=dt, device=dev),
-                               torch.full((z.size(0),), pos_edge_index[1][i], dtype=dt, device=dev)], dim=0)
-            pet = torch.full((z.size(0),), pos_edge_type[i], dtype=dt, device=dev)
-            pred = self.lp_score(z, pei, pet)
-            rank = (pred >= pred[pos_edge_index[0][i]]).sum().item()
-
-            # filter
-            filter_idx = ((known_edge_index[1] == pos_edge_index[1][i]) * (
-                    known_edge_type == pos_edge_type[i])).nonzero().view(-1)
-            filter_idx = known_edge_index[0][filter_idx]
-            rank -= (pred[filter_idx] >= pred[pos_edge_index[0][i]]).sum().item()
-            rank += 1
-            ranks.append(rank)
-
-        # tail batch
-        for i in range(len(pos_edge_type)):
-            pei = torch.stack([torch.full((z.size(0),), pos_edge_index[0][i], dtype=dt, device=dev),
-                               torch.arange(0, z.size(0), dtype=dt, device=dev)], dim=0)
-            pet = torch.full((z.size(0),), pos_edge_type[i], dtype=dt, device=dev)
-            pred = self.lp_score(z, pei, pet)
-
-            rank = (pred >= pred[pos_edge_index[1][i]]).sum().item()
-
-            # filter
-            filter_idx = ((known_edge_index[0] == pos_edge_index[0][i]) * (
-                    known_edge_type == pos_edge_type[i])).nonzero().view(-1)
-            filter_idx = known_edge_index[1][filter_idx]
-            rank -= (pred[filter_idx] >= pred[pos_edge_index[1][i]]).sum().item()
-            rank += 1
-            ranks.append(rank)
-        ranks = np.array(ranks)
-
-        print("MRR: %f, MR: %f, HIT@1: %f, HIT@3: %f, HIT@10: %f" % (
-            (1 / ranks).sum() / len(ranks),
-            (ranks).sum() / len(ranks),
-            (ranks <= 1).sum() / len(ranks),
-            (ranks <= 3).sum() / len(ranks),
-            (ranks <= 10).sum() / len(ranks)
-        ))
-
+    
     def lp_loss(self, pred, y):
         return self.LP_loss(pred.squeeze(1), y)
 
-    def predict(self, logit):
-        return torch.sigmoid(logit.squeeze(1))
 
     def lp_test(self, pred, y):
+
         y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
 
@@ -335,3 +291,94 @@ class GraphStar(nn.Module):
     
     def getZ(self):
         return self.z
+
+    def lp_log(self, z, pos_edge_index, pos_edge_type, known_edge_index, known_edge_type):
+        dt, dev = pos_edge_index.dtype, pos_edge_index.device
+        ranks = []
+
+        sig_z = torch.sigmoid(z)
+        # head batch < ?, r, t>
+        # for all triples
+        for i in range(len(pos_edge_index[0])):
+            
+            # For all heads over a unique triple
+            heads = torch.stack(
+                [torch.arange(0, z.size(0), dtype=dt, device=dev),
+                torch.full((z.size(0),), pos_edge_index[1][i], dtype=dt, device=dev)]
+                , dim=0)
+            
+            # Get unique triple relation
+            relation = torch.full((z.size(0),), pos_edge_type[i], dtype=dt, device=dev)
+            
+            # Currently distmult function score
+            pred = self.lp_score(sig_z, heads, relation)
+
+            # input = embedded head, embedded relation_id, embedded tail
+            # head X rel X tail 
+            # matrix = size num_nodes x hidden_layer
+            target = pred[pos_edge_index[0][i]]
+
+            rank = (pred > target.sum().item()).sum().item()
+
+            # filter
+            filter_idx = (
+                # All indexes of true < ?, r, t> triples
+                (known_edge_index[1] == pos_edge_index[1][i]) * 
+
+                (known_edge_type == pos_edge_type[i])
+            ).nonzero().view(-1)
+
+            # Node id of all true heads in <?, r, t>
+            filter_idx = known_edge_index[0][filter_idx]
+            # remove all valid triples in pred (filtered scenario)
+            rank -= (pred[filter_idx] > pred[pos_edge_index[0][i]].sum().item()).sum().item()
+
+            rank += 1
+            ranks.append(rank)
+
+        # tail batch < h, r, ?>
+        # for all triples
+        for i in range(len(pos_edge_index[0])):
+            
+            # For all tails over a unique triple
+            tails = torch.stack(
+                [torch.full((z.size(0),), pos_edge_index[0][i], dtype=dt, device=dev),
+                torch.arange(0, z.size(0), dtype=dt, device=dev)]
+                , dim=0)
+            
+            # Get unique triple relation
+            relation = torch.full((z.size(0),), pos_edge_type[i], dtype=dt, device=dev)
+            
+            # Currently distmult function score
+            pred = self.lp_score(sig_z, tails, relation)
+
+            # True triple prediction
+            target = pred[pos_edge_index[1][i]]
+
+            # Get number of all predictions scoring (min policy)
+            rank = (pred > target.sum().item()).sum().item()
+
+            # Get ids of all <h, r, ?>
+            filter_idx = (
+                (known_edge_index[1] == pos_edge_index[1][i]) * 
+                (known_edge_type == pos_edge_type[i])
+            ).nonzero().view(-1)
+
+            # Node id of all true heads in <h, r, ?>
+            filter_idx = known_edge_index[1][filter_idx]
+
+            # remove all valid triples in pred (filtered scenario) (min policy)
+            rank -= (pred[filter_idx] > pred[pos_edge_index[1][i]].sum().item()).sum().item()
+
+            rank += 1
+            ranks.append(rank)
+
+        ranks = np.array(ranks)
+
+        print("MRR: %f, MR: %f, HIT@1: %f, HIT@3: %f, HIT@10: %f" % (
+            (1 / ranks).sum() / len(ranks),
+            (ranks).sum() / len(ranks),
+            (ranks <= 1).sum() / len(ranks),
+            (ranks <= 3).sum() / len(ranks),
+            (ranks <= 10).sum() / len(ranks)
+        ))
