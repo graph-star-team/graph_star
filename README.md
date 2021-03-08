@@ -1,38 +1,18 @@
-# graph_star
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/link-prediction-on-citeseer)](https://paperswithcode.com/sota/link-prediction-on-citeseer?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/link-prediction-on-cora)](https://paperswithcode.com/sota/link-prediction-on-cora?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/graph-classification-on-enzymes)](https://paperswithcode.com/sota/graph-classification-on-enzymes?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/sentiment-analysis-on-imdb)](https://paperswithcode.com/sota/sentiment-analysis-on-imdb?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/graph-classification-on-mutag)](https://paperswithcode.com/sota/graph-classification-on-mutag?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/node-classification-on-ppi)](https://paperswithcode.com/sota/node-classification-on-ppi?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/graph-classification-on-proteins)](https://paperswithcode.com/sota/graph-classification-on-proteins?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/link-prediction-on-pubmed)](https://paperswithcode.com/sota/link-prediction-on-pubmed?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/text-classification-on-r52)](https://paperswithcode.com/sota/text-classification-on-r52?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/text-classification-on-r8)](https://paperswithcode.com/sota/text-classification-on-r8?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/text-classification-on-20news)](https://paperswithcode.com/sota/text-classification-on-20news?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/graph-classification-on-dd)](https://paperswithcode.com/sota/graph-classification-on-dd?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/text-classification-on-ohsumed)](https://paperswithcode.com/sota/text-classification-on-ohsumed?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/sentiment-analysis-on-mr)](https://paperswithcode.com/sota/sentiment-analysis-on-mr?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/node-classification-on-cora)](https://paperswithcode.com/sota/node-classification-on-cora?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/node-classification-on-pubmed)](https://paperswithcode.com/sota/node-classification-on-pubmed?p=graph-star-net-for-generalized-multi-task-1)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-star-net-for-generalized-multi-task-1/node-classification-on-citeseer)](https://paperswithcode.com/sota/node-classification-on-citeseer?p=graph-star-net-for-generalized-multi-task-1)
+# multiRelational GraphStar
+Adaption of the [GraphStar Net](https://arxiv.org/pdf/1906.12330v1.pdf) architecture to predict links in multiple-relation datasets
+
 
 ## Introduction
 
-Information propagation is the key idea that con-tributes to the recent success of graph neural net-work on various tasks.  However, there still lacksan efficient framework that is able to achieve globalmessage passing across the whole graph.  In thiswork,  we  present  graph  star  net  (GraphStar),  anovel and unified graph neural network architec-ture that achieves non-local graphical representa-tion through topological modification of the originalgraph.  In particular,  we propose to use a virtual“star” node to propagate global information to allreal nodes, which significantly increase the represen-tation power without increasing the model depth orbearing heavy computational complexity. Throughextensive experiments, we provide a general pictureof how the proposed topological change affects theperformance of graph neural network on the threemajor graph tasks. Specifically, we show that intro-ducing the “star” node to effectively integrate distalinformation significantly improves the performanceof link prediction task, leading to state-of-the-arts(SOTA) performances on three benchmark datasets.On graph classification task,  GraphStar achievescomparable performances with the currently bestmodels on multiple benchmark datasets and showssignificantly increased stability. On the node classi-fication task, our results also indicate the superiorperformance of our model on dense graph with in-ductive setting. All these results indicate that the pro-posed topological modification method is a promis-ing strategy for improving the current graph neuralnetwork models.
+The main issue with LP remains the quality of the inferred missing triples. A serious weakness in early deep learning approaches stemmes from the finding that convolutional neural networks struggle with prediction tasks in large complex graphs. This is a result of the difficulties of defining convolutional and pooling layers for non-Euclidean data. This, in turn, inspired the rise of Graph Neural Networks(GNN), which is currently a key research area in the AI community. A promising example is the GraphStar Net architecture. Information propagation is the key idea that contributes to the recent success of GNNs on various tasks. However, there still lacks an efficient framework that is able to achieve global message passing across the whole graph. GraphStar presents a novel and unified graph neural network architecture that achieves non-local graphical representation through topological modification of the original graph. In particular, they propose to use a virtual “star” node to propagate global information to all real nodes, which significantly increase the representation power without increasing the model depth or bearing heavy computational complexity.  
+
+In GraphStar, the authors have implemented a link prediction model for the special case of single-relation datasets. Though applicable to many problems, several tasks such as particular content based fake news detection systems require models to predict links in multiple-relation datasets.
 
 --------------------------------------------------------------------------------
 ## Datasets
-All datasets in the above, respective classification tasks will be downloaded automatically when executing the script for the first time. Please note that all datasets are publicly obtained online.
 
-The proposed model is evaluated on several popular public datasets including Cora, Citeseer, MUTAG, D&D, and etc. For different tasks, the adopted datasets are different.
+The datasets used in this implementation are FB15k and FB15k-237. They are selected as they have been used extensively in prior work on LP. To this date, FB15k is one of the most commonly used benchmark for LP. This enables easy and comprehensive comparisons between our model and previous work.
 
-- For node classification tasks, we evaluate on Cora, Citeseer, Pubmed, PPI, IMDB and etc.
-- For link prediction tasks, we evaluate on Cora, Citeseer, Pubmed and etc.
-- For graph classification tasks, we tested the following datasets: Enzymes, D&D, Proteins and MUTAG.
-- For graph classification in text classification tasks, we evaluate on the following datasets: 20NG, R8, R52, Ohsumed and MR. Those datasets can be created following the Pytorch_geometry required format.
-
-For more information regarding the datasets, please refer to the submitted paper.
 
 --------------------------------------------------------------------------------
 ## Dependencies
@@ -86,51 +66,13 @@ We are currently running [Python 3.7.5](https://www.python.org/downloads/release
  ```
  pip install -r requirements.txt
  ```
+
 ## Testing (Run the code)
 
- 1) For node classification tasks (cora, citeseer and pubmed .etc), choose related script then try
- 
- Prepare Imdb dataset:
+ 1) For link prediction tasks (fb15k, fb15k-237), choose related script then try
  ```sh
- cd data
- wget https://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz && tar zxvf aclImdb_v1.tar.gz
- cd ..
- python utils/imdb_data_util.py
-  ```
- 
- ```sh
- python run_transductive_nc.py --dataset=cora --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=2e-3  --lr=1e-3 --star_init_method=mean
- python run_transductive_nc.py --dataset=citeseer --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=4e-3  --lr=1e-3 --star_init_method=mean 
- python run_transductive_nc.py --dataset=pubmed --num_layers=2 --heads=8 --hidden=128 --dropout=0.7 --coef_dropout=0.2 --patience=50 --l2=1e-4  --lr=5e-3 --star_init_method=mean
- 
- python run_imdb.py
- python run_ppi.py
+python run_mr_lp.py --dropout=0 --hidden=256 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=5 --residual=True --residual_star=True --device=cpu --epochs=50
  ```
-
-
- 2) For link prediction tasks (cora, citeseer and pubmed .etc), choose related script then try
- ```sh
- python run_lp.py --dataset=pubmed --dropout=0 --hidden=512 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=500 --residual=True --residual_star=True
- python run_lp.py --dataset=citeseer --dropout=0 --hidden=2048 --l2=2e-4 --num_layers=3 --cross_layer=False --patience=500 --residual=True --residual_star=True
- python run_lp.py --dataset=cora --dropout=0 --hidden=2048 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=200 --residual=True --residual_star=True
- ```
-
-
- 3) For graph classification tasks (Enzymes, D&D, Proteins), choose related script then try
- ```sh
- python run_gc.py --dataset=ENZYMES --dropout=0.2 --coef_dropout=0.2 --hidden=64 --num_layers=3 --cross_layer=False --lr=5e-4 --l2=1e-4 --max_epoch=500
- python run_gc.py --dataset=PROTEINS --dropout=0.2 --coef_dropout=0.2 --hidden=512 --num_layers=3 --cross_layer=False --lr=5e-4 --l2=1e-3 --max_epoch=500
- python run_gc.py --dataset=DD --dropout=0.2 --coef_dropout=0.2 --hidden=64 --num_layers=3 --cross_layer=False --lr=5e-4 --l2=1e-3 --max_epoch=500
- python run_gc.py --dataset=MUTAG --dropout=0 --coef_dropout=0 --hidden=64 --num_layers=3 --cross_layer=False --lr=5e-4 --max_epoch=200
- ```
-
- 4) For text classification tasks, change **DATASET** value in the script, then try
- ```sh
- python build_text_graph.py  # only need at the first time for a single dataset
- python run_text_classification.py
- ```
-
-
 
 
 --------------------------------------------------------------------------------
@@ -141,28 +83,18 @@ To visualize the metrics of your model run:
 
 ```tensorboard --logdir="./tensorboard"```
 
-## Plot Graph Classification Results
+## Performance 
+Combined average of AUC and AP scores. CPC denotes the average performance onthe three datasets; Cora, Pubmed, and Citseer
 
-For graph classification tasks (D&D, Enzymes, Proteins etc.), we adopt 10-fold cross validation as metric to evaluate their performance. A script "log_plot_tools" was created to visualize their results. To use this tool, first you need to save the print out messages during training in a txt file.
+| Models  | CPC  | FB15k  |  FB15k-237
+| :------------ | :------------ | :------------ | :------------|
+| GraphStar  | 0.969  |   |   |
+| **mrGraphStar**  |   | 0.466  | 0.968  |
 
-If you prefer use linux terminal, you can use the **tee** command, like the following way.
+## Performance of original architecture
 
-```sh
- python run_mutag | tee log.txt
-```
+Below are the results presented by the [graph_star_team](https://github.com/graph-star-team). 
 
-
-If you use JupyterHub, you can use the magic command **%capture** to server this purpose, as shown in following figure.
-
-![How to easily save jupyter print out as log file](./pics/jupyter_save_as_log.JPG)
-
-After got the log file, just run the command in a terminal, like:
-
-```sh
-   python log_plot_tools.py --log_dir=./log_file_name.txt \
-    [ --show_plots=false  --save_as_pdf=true]
-```
-## Performance
 ### Node Classification (Transductive)
 | Models  | Cora (Acc)  | Citeseer (Acc)  | Pubmed (Acc)
 | :------------ | :------------ | :------------ | :------------|

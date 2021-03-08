@@ -64,9 +64,9 @@ def load_data():
     print('\tLoading FB15k data...')
 
     name = ['head', 'tail', 'relation']
-    train = pd.read_csv('./data/FB15k-237/train.txt', sep='\t', header=None, names=name, engine='python')
-    valid = pd.read_csv('./data/FB15k-237/valid.txt', sep='\t', header=None, names=name, engine='python')
-    test = pd.read_csv('./data/FB15k-237/test.txt', sep='\t', header=None, names=name, engine='python')
+    train = pd.read_csv('./data/FB15k/train.txt', sep='\t', header=None, names=name, engine='python')
+    valid = pd.read_csv('./data/FB15k/valid.txt', sep='\t', header=None, names=name, engine='python')
+    test = pd.read_csv('./data/FB15k/test.txt', sep='\t', header=None, names=name, engine='python')
     
     dataset, all_relations = led.label_encode_dataset(entity, relation, train)
     valid, all_relations = led.label_encode_dataset(entity, relation, valid)

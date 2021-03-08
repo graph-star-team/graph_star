@@ -7,11 +7,12 @@ kiwisolver==1.0.1
 matplotlib==3.0.3
 networkx==2.3
 nltk
+node2vec
 numpy==1.16.2
 pandas==0.24.2
 Pillow==6.0.0
 plyfile==0.7
-protobuf==3.7.1
+protobuf
 pyparsing==2.4.0
 python-dateutil==2.8.0
 pytz==2019.1
@@ -22,8 +23,10 @@ six==1.12.0
 tensorboardX==1.6
 tensorflow==2.3.1
 torch==1.6.0
+# if issue to install torch-cluster -> need to run pip install torch before running requirements.txt
+torchvision
 torch-cluster
-torch-geometric==1.4.2
+torch-geometric==1.4.3
 torch_scatter
 torch-sparse==0.6.7
 texttable
