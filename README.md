@@ -4,14 +4,14 @@ Adaption of the [GraphStar Net](https://arxiv.org/pdf/1906.12330v1.pdf) architec
 
 ## Introduction
 
-The main issue with LP remains the quality of the inferred missing triples. A serious weaknessin early deep learning approaches stemmed from the finding that convolutional neural networks struggle with prediction tasks in large complex graphs. This is a result of the difficulties of defining convolutional and pooling layers for non-Euclidean data. This, in turn, inspired the rise of Graph Neural Networks(GNN), which is currently a key research area in the AI community. A promising example is the GraphStar Net architecture. Information propagation is the key idea that contributes to the recent success of GNNs on various tasks. However, there still lacks an efficient framework that is able to achieve global message passing across the whole graph. GraphStar presents a novel and unified graph neural network architecture that achieves non-local graphical representation through topological modification of the original graph. In particular, they propose to use a virtual “star” node to propagate global information to all real nodes, which significantly increase the representation power without increasing the model depth or bearing heavy computational complexity.  
+The main issue with LP remains the quality of the inferred missing triples. A serious weakness in early deep learning approaches stemmes from the finding that convolutional neural networks struggle with prediction tasks in large complex graphs. This is a result of the difficulties of defining convolutional and pooling layers for non-Euclidean data. This, in turn, inspired the rise of Graph Neural Networks(GNN), which is currently a key research area in the AI community. A promising example is the GraphStar Net architecture. Information propagation is the key idea that contributes to the recent success of GNNs on various tasks. However, there still lacks an efficient framework that is able to achieve global message passing across the whole graph. GraphStar presents a novel and unified graph neural network architecture that achieves non-local graphical representation through topological modification of the original graph. In particular, they propose to use a virtual “star” node to propagate global information to all real nodes, which significantly increase the representation power without increasing the model depth or bearing heavy computational complexity.  
 
 In GraphStar, the authors have implemented a link prediction model for the special case of single-relation datasets. Though applicable to many problems, several tasks such as particular content based fake news detection systems require models to predict links in multiple-relation datasets.
 
 --------------------------------------------------------------------------------
 ## Datasets
 
-The datasets used in this implementation are FB15k and FB15k-237. They are selected as thehave been used extensively in prior work on LP. To this date, FB15k is one of the most commonly used benchmark for LP. This enables easy and comprehensive comparisons between our model and previous work.
+The datasets used in this implementation are FB15k and FB15k-237. They are selected as they have been used extensively in prior work on LP. To this date, FB15k is one of the most commonly used benchmark for LP. This enables easy and comprehensive comparisons between our model and previous work.
 
 
 --------------------------------------------------------------------------------
@@ -83,6 +83,13 @@ To visualize the metrics of your model run:
 
 ```tensorboard --logdir="./tensorboard"```
 
+## Performance 
+Combined average of AUC and AP scores. CPC denotes the average performance onthe three datasets; Cora, Pubmed, and Citseer
+
+| Models  | CPC  | FB15k  |  FB15k-237
+| :------------ | :------------ | :------------ | :------------|
+| GraphStar  | 0.969  |   |   |
+| **mrGraphStar**  |   | 0.466  | 0.968  |
 
 ## Performance of original architecture
 
