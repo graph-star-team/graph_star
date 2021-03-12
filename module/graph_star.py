@@ -1,7 +1,9 @@
+import os.path as osp
+import sys
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from torch.nn import Parameter
 from torch_geometric.nn import global_mean_pool as gap
 from sklearn.metrics import roc_auc_score, average_precision_score
@@ -11,18 +13,18 @@ from sklearn import metrics
 from .graph_star_conv_multi_rel_super_attn import GraphStarConv
 from .star_attn import StarAttn
 from .cross_layer_attn import CrossLayerAttn
-import sys
+import utils.tensorboard_writer as tw
+from tqdm import tqdm
 
 sys.path.append("..")
-import utils.tensorboard_writer as tw
 
 EPS = 1e-15
 
 
 class GraphStar(nn.Module):
-    def __init__(self, num_features, num_node_class, num_graph_class, hid, num_star=4, cross_star=False, heads=6,
+    def __init__(self, num_features, num_node_class, num_graph_class, hid, relation_embeddings, num_star=4, cross_star=False, heads=6,
                  num_relations=18, relation_dimension=0, one_hot_node=True, one_hot_node_num=0, star_init_method="attn",
-                 link_prediction=False, coef_dropout=0.2,
+                 link_prediction=True, coef_dropout=0.2,
                  dropout=0.1, residual=True, residual_star=True, layer_norm=True, layer_norm_star=True, use_e=True,
                  num_layers=3, cross_layer=False, activation=None, additional_self_loop_relation_type=False,
                  additional_node_to_star_relation_type=False, relation_score_function="DistMult"):
@@ -116,8 +118,9 @@ class GraphStar(nn.Module):
                                                    out_channels=hid, dropout=dropout, coef_dropout=coef_dropout,
                                                    residual=False, layer_norm=layer_norm_star)
         self.rl = nn.Linear(num_relations, hid)
-        self.RW = Parameter(torch.empty(num_relations, hid).uniform_(-0.1, 0.1))
+        self.RW = relation_embeddings
         self.LP_loss = nn.BCEWithLogitsLoss()
+
 
     def forward(self, x, edge_index, batch, star=None, y=None, edge_type=None):
         # times = []
@@ -206,6 +209,7 @@ class GraphStar(nn.Module):
 
         return x, stars, x_lp
 
+
     def nc_loss(self, x, y, multi_label=False):
         if multi_label:
             node_loss_op = torch.nn.BCEWithLogitsLoss()
@@ -213,6 +217,7 @@ class GraphStar(nn.Module):
             node_loss_op = torch.nn.CrossEntropyLoss()
 
         return node_loss_op(x, y)
+
 
     def nc_test(self, x, y, multi_label=False):
         if multi_label:
@@ -227,6 +232,7 @@ class GraphStar(nn.Module):
 
         return node_acc_count
 
+
     def gc_loss(self, x, y, multi_label=False):
         if multi_label:
             graph_loss_op = torch.nn.BCEWithLogitsLoss()
@@ -235,6 +241,7 @@ class GraphStar(nn.Module):
 
         return graph_loss_op(x, y)
 
+
     def gc_test(self, x, y, multi_label=False):
         graph_acc_count = metrics.accuracy_score(y.cpu(),
                                                  torch.argmax(F.softmax(x, dim=1), dim=1).cpu(),
@@ -242,11 +249,12 @@ class GraphStar(nn.Module):
 
         return graph_acc_count
 
+
     def lp_score(self, z, edge_index, edge_type):
-        z = F.dropout(z, 0.5, training=self.training)
-        
+        rel_embeddings = Parameter(torch.tensor([self.RW[str(rel.item())] for rel in edge_type]))
+        z = F.dropout(z, 0.5, training=self.training)    
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
-                                            self.RW[edge_type].unsqueeze(1),
+                                            rel_embeddings.unsqueeze(1),
                                             z[edge_index[1]].unsqueeze(1)
                                             )
         return pred
@@ -261,6 +269,7 @@ class GraphStar(nn.Module):
         y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
 
+
     def add_star_edge(self, edge_index, edge_type, x_size, batch):
         dtype, device = edge_index.dtype, edge_index.device
 
@@ -272,6 +281,7 @@ class GraphStar(nn.Module):
             edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.node_to_star_relation_type)])
         return edge_index, edge_type
 
+
     def add_self_loop_edge(self, edge_index, edge_type, x_size):
         dtype, device = edge_index.dtype, edge_index.device
         tmp = torch.arange(0, x_size, dtype=dtype, device=device)
@@ -280,17 +290,21 @@ class GraphStar(nn.Module):
         edge_type = torch.cat([edge_type, edge_type.new_full((x_size,), self.self_loop_relation_type)], dim=0)
         return edge_index, edge_type
 
+
     def DistMult(self, head, relation, tail):
         # Check dimensionality of inputs
         score = head * relation * tail
 
         return score.sum(dim=2)
 
+
     def updateZ(self, z):
         self.z = z
     
+
     def getZ(self):
         return self.z
+
 
     def lp_log(self, z, pos_edge_index, pos_edge_type, known_edge_index, known_edge_type):
         dt, dev = pos_edge_index.dtype, pos_edge_index.device
@@ -299,7 +313,7 @@ class GraphStar(nn.Module):
         sig_z = torch.sigmoid(z)
         # head batch < ?, r, t>
         # for all triples
-        for i in range(len(pos_edge_index[0])):
+        for i in tqdm(range(len(pos_edge_index[0])), desc='head prediction'):
             
             # For all heads over a unique triple
             heads = torch.stack(
@@ -338,7 +352,7 @@ class GraphStar(nn.Module):
 
         # tail batch < h, r, ?>
         # for all triples
-        for i in range(len(pos_edge_index[0])):
+        for i in tqdm(range(len(pos_edge_index[0])), desc='tail prediction'):
             
             # For all tails over a unique triple
             tails = torch.stack(
