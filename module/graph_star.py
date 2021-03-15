@@ -1,15 +1,10 @@
-import os.path as osp
 import sys
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Parameter
 from torch_geometric.nn import global_mean_pool as gap
-from sklearn.metrics import roc_auc_score, average_precision_score
-from sklearn import metrics
-# from .graph_star_conv import GraphStarConv
-# from .graph_star_conv_multi_rel import GraphStarConv
+from sklearn.metrics import roc_auc_score, average_precision_score, f1_score, accuracy_score
 from .graph_star_conv_multi_rel_super_attn import GraphStarConv
 from .star_attn import StarAttn
 from .cross_layer_attn import CrossLayerAttn
@@ -18,28 +13,21 @@ from tqdm import tqdm
 
 sys.path.append("..")
 
-EPS = 1e-15
-
 
 class GraphStar(nn.Module):
-    def __init__(self, num_features, num_node_class, num_graph_class, hid, relation_embeddings, num_star=4, cross_star=False, heads=6,
-                 num_relations=18, relation_dimension=0, one_hot_node=True, one_hot_node_num=0, star_init_method="attn",
-                 link_prediction=True, coef_dropout=0.2,
-                 dropout=0.1, residual=True, residual_star=True, layer_norm=True, layer_norm_star=True, use_e=True,
-                 num_layers=3, cross_layer=False, activation=None, additional_self_loop_relation_type=False,
-                 additional_node_to_star_relation_type=False, relation_score_function="DistMult"):
+    def __init__(self, num_features, hid, relation_embeddings, num_relations, num_star=4, cross_star=False, heads=6,
+                one_hot_node=True, one_hot_node_num=0, star_init_method="attn", coef_dropout=0.2,
+                dropout=0.1, residual=True, residual_star=True, layer_norm=True, layer_norm_star=True, use_e=True,
+                num_layers=3, cross_layer=False, activation=None, additional_self_loop_relation_type=False,
+                additional_node_to_star_relation_type=False, relation_score_function="DistMult"):
         super(GraphStar, self).__init__()
         self.one_hot_node = one_hot_node
-        self.num_graph_class = num_graph_class
         self.cross_layer = cross_layer
         self.num_layers = num_layers
         self.use_e = use_e
         self.num_star = num_star
         self.num_features = num_features
         self.hid = hid
-        self.node_classification = num_node_class > 0
-        self.graph_classification = num_graph_class > 0
-        self.link_prediction = link_prediction
         self.dropout = dropout
         self.coef_dropout = coef_dropout
         assert star_init_method in ["mean", "attn"], "star init method must be mean or attn"
@@ -79,7 +67,7 @@ class GraphStar(nn.Module):
 
         if one_hot_node:
             assert one_hot_node_num > 0
-            self.x_embedding = torch.nn.Embedding(one_hot_node_num, hid)
+            self.x_embedding = nn.Embedding(one_hot_node_num, hid)
         else:
             self.fl = nn.Linear(num_features, hid)
         self.star_init = StarAttn(heads=self.num_star, use_star=False, cross_star=False,
@@ -104,14 +92,8 @@ class GraphStar(nn.Module):
             self.conv_list.append(conv)
             self.star_attn_list.append(star_attn)
 
-        if self.node_classification:
-            self.node_linear = nn.Linear(hid, num_node_class)
-        if self.graph_classification:
-            self.star_linear = nn.Linear(hid, num_graph_class)
 
-        self.gcl1 = nn.Linear(hid * 2, hid)
-        self.gcl2 = nn.Linear(hid, hid // 2)
-        self.gcl3 = nn.Linear(hid // 2, num_graph_class)
+        
 
         if cross_layer:
             self.cross_layer_attn = CrossLayerAttn(heads=heads, use_star=False, cross_star=False, in_channels=hid,
@@ -123,12 +105,8 @@ class GraphStar(nn.Module):
 
 
     def forward(self, x, edge_index, batch, star=None, y=None, edge_type=None):
-        # times = []
         if self.training:
-            tw.train_steps += 1
-        else:
-            tw.val_steps += 1
-            tw.test_steps += 1
+            tw.steps += 1
 
         num_node = x.size(0)
         num_graph = 1 #TODO: Don't know why it should be: len(torch.bincount(batch))
@@ -147,7 +125,6 @@ class GraphStar(nn.Module):
 
         if self.num_star > 0:
             edge_index, edge_type = self.add_star_edge(edge_index, edge_type, num_node, batch)
-            # times.append(time.time())
             if star is None:
                 star_seed = gap(x, batch)
             else:
@@ -155,19 +132,15 @@ class GraphStar(nn.Module):
                 star_seed = F.relu(star)
                 # star_seed = star
             star_seed = star_seed.unsqueeze(1)
-            # times.append(time.time())
 
             if self.star_init_method == "attn":
                 stars = self.star_init(star_seed, x, batch).view(num_graph, self.num_star, self.hid)
-                # times.append(time.time())
             elif self.star_init_method == "mean":
                 assert self.num_star == 1
                 stars = torch.unsqueeze(star_seed, 1)
 
         x_list = []
         stars_list = []
-        # times.append(time.time())
-
         for conv, star_attn, i in zip(self.conv_list, self.star_attn_list, range(len(self.conv_list))):
             # update node
             x = conv(x, stars.view(-1, self.hid), None, edge_index, edge_type=edge_type)
@@ -177,81 +150,21 @@ class GraphStar(nn.Module):
             if self.cross_layer:
                 x_list.append(x[:num_node])
                 stars_list.append(stars)
-        # if y is not None:
-        #     meta = torch.cat([y, torch.full((1,self.num_star), 2, dtype=y.dtype, device=y.device).view(-1)], dim=0)
-        #     tw.writer.add_embedding(torch.cat([x, stars], dim=0), metadata=meta,
-        #                             global_step=(tw.train_steps if self.training else tw.val_steps),
-        #                             tag=("train/" if self.training else "eval/") + "nodes")
-        # times.append(time.time())
 
         if self.cross_layer:
-            if self.node_classification or self.link_prediction:
-                target_list = x_list
-            elif self.graph_classification:
-                target_list = stars_list
-            if self.node_classification or self.graph_classification or self.link_prediction:
-                layer_res = torch.cat(target_list, dim=0).view(self.num_layers, -1, self.hid)  # num_layer,num_node,hid
-                layer_res = layer_res.transpose(1, 0)  # num_node,num_layer,hid
-                mean_res = torch.mean(layer_res, dim=1, keepdim=True)  # num_node,1,hid
-                res = self.cross_layer_attn(mean_res, layer_res)
-            if self.node_classification or self.link_prediction:
-                x = res
-            elif self.graph_classification:
-                stars = res
+            target_list = x_list
+            layer_res = torch.cat(target_list, dim=0).view(self.num_layers, -1, self.hid)  # num_layer,num_node,hid
+            layer_res = layer_res.transpose(1, 0)  # num_node,num_layer,hid
+            mean_res = torch.mean(layer_res, dim=1, keepdim=True)  # num_node,1,hid
+            res = self.cross_layer_attn(mean_res, layer_res)
+            x = res
         x_lp = x
-        x = self.node_linear(x) if self.node_classification else x
-        stars = self.star_linear(stars) if self.graph_classification else stars
-        if self.graph_classification:
-            if len(stars.shape) == 3:
-                stars = stars.mean(dim=1)
-        # times.append(time.time())
-        # times = [t - times[i - 1] for i, t in enumerate(times) if i > 0]
 
         return x, stars, x_lp
 
 
-    def nc_loss(self, x, y, multi_label=False):
-        if multi_label:
-            node_loss_op = torch.nn.BCEWithLogitsLoss()
-        else:
-            node_loss_op = torch.nn.CrossEntropyLoss()
-
-        return node_loss_op(x, y)
-
-
-    def nc_test(self, x, y, multi_label=False):
-        if multi_label:
-            micro_f1 = metrics.f1_score(y.cpu().detach().numpy(), (x > 0).cpu().detach().numpy(), average='micro')
-            node_acc_count = micro_f1 * len(x)
-        else:
-            y = y.cpu()
-            pred = torch.argmax(F.softmax(x, dim=1), dim=1).cpu()
-            node_acc_count = metrics.accuracy_score(y,
-                                                    pred,
-                                                    normalize=False)
-
-        return node_acc_count
-
-
-    def gc_loss(self, x, y, multi_label=False):
-        if multi_label:
-            graph_loss_op = torch.nn.BCEWithLogitsLoss()
-        else:
-            graph_loss_op = torch.nn.CrossEntropyLoss()
-
-        return graph_loss_op(x, y)
-
-
-    def gc_test(self, x, y, multi_label=False):
-        graph_acc_count = metrics.accuracy_score(y.cpu(),
-                                                 torch.argmax(F.softmax(x, dim=1), dim=1).cpu(),
-                                                 normalize=False)
-
-        return graph_acc_count
-
-
     def lp_score(self, z, edge_index, edge_type):
-        rel_embeddings = Parameter(torch.tensor([self.RW[str(rel.item())] for rel in edge_type]))
+        rel_embeddings = nn.Parameter(torch.tensor([self.RW[str(rel.item())] for rel in edge_type]))
         z = F.dropout(z, 0.5, training=self.training)    
         pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
                                             rel_embeddings.unsqueeze(1),

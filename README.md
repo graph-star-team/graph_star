@@ -27,7 +27,7 @@ We are currently running [Python 3.7.5](https://www.python.org/downloads/release
  Normally we have already provided most of the optimal value which we got during traning. So you don't have to change much. Any away, we still explain the main options here.
 
  ```
-   --device                                     INT/STR GPU ID / Use CPU                               Default is `0`, use 'cpu' if no GPU is available
+   --device                                     INT/STR GPU ID / cpu                               Default is `0`, use 'cpu' if no GPU is available
    --num_star                                   INT     Number of Star.                                Default is 1.
    --epochs                                     INT     Number of training epochs.                     Default is 2000.
    --lr                                         FLOAT   Adam learning rate.                            Default is 2e-4.
@@ -47,7 +47,7 @@ We are currently running [Python 3.7.5](https://www.python.org/downloads/release
    --additional_node_to_star_relation_type      STR     As its name implied                            Default is True.
    --relation_score_function                    STR     Score function for relation                    Default is `DistMult`.
    --patience                                   INT     Number of patience                             Default is 100.
-   --dataset                                    STR     Name of dataset                                Default is "".
+   --dataset                                    STR     Name of dataset                                Default is "FB15k_237".
  ```
 
 --------------------------------------------------------------------------------
@@ -69,9 +69,9 @@ We are currently running [Python 3.7.5](https://www.python.org/downloads/release
 
 ## Testing (Run the code)
 
- 1) For link prediction tasks (fb15k, fb15k-237), choose related script then try
+ 1) For link prediction tasks (FB15k, FB15k-237), choose related script then try
  ```sh
-python run_mr_lp.py --dropout=0 --hidden=256 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=5 --residual=True --residual_star=True --device=cpu --epochs=50
+python run_mr_lp.py --dropout=0 --hidden=256 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=200 --residual=True --residual_star=True --dataset=FB15k_237 --device=cpu --epochs=50
  ```
 
 

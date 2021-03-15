@@ -136,3 +136,6 @@ output
 #Block data
 data/*
 !data/FB15k/
+
+#Block embeddings
+embeddings/*

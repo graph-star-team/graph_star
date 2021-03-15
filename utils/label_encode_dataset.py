@@ -15,17 +15,6 @@ def label_encode_dataset(le_entity, le_relation, data):
     relations = le_relation.transform(relations)
 
     
-    # encode subsample (change range to 0-N)
-    '''
-    le_entity2 = LabelEncoder().fit(np.append(subjects,objects))
-    le_rel = LabelEncoder().fit(relations)
-
-
-    subjects = le_entity2.transform(subjects)
-    objects = le_entity2.transform(objects)
-    relations = le_rel.transform(relations)
-    '''
-    
     edge_attributes = torch.tensor(relations, dtype=torch.long)
     edge_index = torch.tensor([heads, tails], dtype=torch.long)
     unique_entities = torch.tensor(np.unique(edge_index.reshape(edge_index.shape[-1]*2, 1)), dtype=torch.float)
