@@ -1,7 +1,8 @@
+import os
 import time
 import torch
 import numpy as np
-import os
+from tqdm import tqdm
 import utils.tensorboard_writer as tw
 import utils.gsn_argparse as gap
 from utils.gsn_argparse import tab_printer
@@ -42,7 +43,7 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
     graph_acc_count = 0
     lp_auc = lp_ap = None
     data_count = 0
-    for data in loader:
+    for data in tqdm(loader, disable=(not mode == "train"), desc='train_transductive_'+mode):
         data_count += data.num_graphs
         num_graphs = data.num_graphs
         data = data.to(device)
@@ -61,83 +62,82 @@ def train_transductive(model, optimizer, loader, device, node_multi_label,
         loss = None
 
 
-        if link_prediction:
-            pei, pet = get_edge_info(data, mode)
-            if mode == "train":
-                nei = data.train_neg_edge_index
-                lowest = min(data.edge_type) 
-                highest = max(data.edge_type)
-                net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
-                '''
-                if train_neg_sampling_queue is None:
-                    train_neg_sampling_queue = Queue(maxsize=30)
-                    train_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
-                    train_true_tuples = set([tuple(l) for l in train_true_tuples.tolist()])
-                    build_neg_sampling(pei.cpu(), pet.cpu(), train_true_tuples, logits_lp.size(0), 1,
-                                       train_neg_sampling_queue, 10)
-                if train_neg_sampling_queue.empty():
-                    print("train neg sampling queue is empty,waiting...")
-                nei, net = train_neg_sampling_queue.get()
-                '''
-            elif mode == "val":  
-                print("Validation")  
-                '''
-                if val_neg_sampling_queue is None:
-                    test_neg_sampling_queue = Queue(maxsize=30)
-                    val_neg_sampling_queue = Queue(maxsize=30)
-                    test_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
-                    test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
-                    build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
-                                        val_neg_sampling_queue, 5)
+        pei, pet = get_edge_info(data, mode)
+        if mode == "train":
+            nei = data.train_neg_edge_index
+            lowest = min(data.edge_type) 
+            highest = max(data.edge_type)
+            net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
+            '''
+            if train_neg_sampling_queue is None:
+                train_neg_sampling_queue = Queue(maxsize=30)
+                train_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
+                train_true_tuples = set([tuple(l) for l in train_true_tuples.tolist()])
+                build_neg_sampling(pei.cpu(), pet.cpu(), train_true_tuples, logits_lp.size(0), 1,
+                                    train_neg_sampling_queue, 10)
+            if train_neg_sampling_queue.empty():
+                print("train neg sampling queue is empty,waiting...")
+            nei, net = train_neg_sampling_queue.get()
+            '''
+        elif mode == "val":  
+            print("Validation")  
+            '''
+            if val_neg_sampling_queue is None:
+                test_neg_sampling_queue = Queue(maxsize=30)
+                val_neg_sampling_queue = Queue(maxsize=30)
+                test_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
+                test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
+                build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
+                                    val_neg_sampling_queue, 5)
+            
+            if val_neg_sampling_queue.empty():
+                print("val neg sampling queue is empty,waiting...")
+
+            #nei, net = data.val_neg_edge_index, data.val_neg_edge_index.new_zeros(
+            #    (data.val_neg_edge_index.size(-1),))
+            '''
+            nei = data.val_neg_edge_index
+            lowest = min(data.edge_type) 
+            highest = max(data.edge_type)
+            net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
+            #nei, net = val_neg_sampling_queue.get() 
+
+        else:
+            print("test")
+            '''
+            if test_neg_sampling_queue is None:
+                test_neg_sampling_queue = Queue(maxsize=30)
+                test_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
+                test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
+                build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
+                                    test_neg_sampling_queue, 5)
                 
-                if val_neg_sampling_queue.empty():
-                    print("val neg sampling queue is empty,waiting...")
+            if test_neg_sampling_queue.empty():
+                print("test neg sampling queue is empty,waiting...")
+            
+            #nei, net = data.test_neg_edge_index, data.test_neg_edge_index.new_zeros(
+            #    (data.test_neg_edge_index.size(-1),))
+            nei, net = test_neg_sampling_queue.get()
+            '''
+            nei = data.test_neg_edge_index
+            lowest = min(data.edge_type) 
+            highest = max(data.edge_type)
+            net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
+            
+        nei, net = nei.to(pei.device), net.to(pei.device)
+        ei = torch.cat([pei, nei], dim=-1)
+        et = torch.cat([pet, net], dim=-1)
+        # TODO: Need to save logits, edge index and edge type
+        model.updateZ(logits_lp)
+        pred = model.lp_score(torch.sigmoid(logits_lp), ei, et)
 
-                #nei, net = data.val_neg_edge_index, data.val_neg_edge_index.new_zeros(
-                #    (data.val_neg_edge_index.size(-1),))
-                '''
-                nei = data.val_neg_edge_index
-                lowest = min(data.edge_type) 
-                highest = max(data.edge_type)
-                net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
-                #nei, net = val_neg_sampling_queue.get() 
+        y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
 
-            else:
-                print("test")
-                '''
-                if test_neg_sampling_queue is None:
-                    test_neg_sampling_queue = Queue(maxsize=30)
-                    test_true_tuples = torch.stack([pei[0], pet, pei[1]], dim=0).t().cpu().numpy()
-                    test_true_tuples = set([tuple(l) for l in test_true_tuples.tolist()])
-                    build_neg_sampling(pei.cpu(), pet.cpu(), test_true_tuples, logits_lp.size(0), 1,
-                                        test_neg_sampling_queue, 5)
-                    
-                if test_neg_sampling_queue.empty():
-                    print("test neg sampling queue is empty,waiting...")
-                
-                #nei, net = data.test_neg_edge_index, data.test_neg_edge_index.new_zeros(
-                #    (data.test_neg_edge_index.size(-1),))
-                nei, net = test_neg_sampling_queue.get()
-                '''
-                nei = data.test_neg_edge_index
-                lowest = min(data.edge_type) 
-                highest = max(data.edge_type)
-                net = torch.randint(low=lowest,high=highest,size=(nei.size(-1),))
-                
-            nei, net = nei.to(pei.device), net.to(pei.device)
-            ei = torch.cat([pei, nei], dim=-1)
-            et = torch.cat([pet, net], dim=-1)
-            # TODO: Need to save logits, edge index and edge type
-            model.updateZ(logits_lp)
-            pred = model.lp_score(torch.sigmoid(logits_lp), ei, et)
-
-            y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
-
-            loss_ = model.lp_loss(pred, y)
-            loss = loss_ if loss is None else loss + loss_
-            lp_auc, lp_ap = model.lp_test(pred, y)
-            if ((mode == "val") or (mode == "test")) and cal_mrr_score:
-                model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
+        loss_ = model.lp_loss(pred, y)
+        loss = loss_ if loss is None else loss + loss_
+        lp_auc, lp_ap = model.lp_test(pred, y)
+        if ((mode == "test")) and cal_mrr_score: 
+            model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
 
         total_loss += loss.item() * num_graphs
         if mode == "train":
@@ -182,7 +182,7 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
         loss = None
         total_loss += loss.item() * num_graphs
         if mode == "train":
-            loss.backward()
+            loss.backward() 
             # torch.nn.utils.clip_grad_value_(model.parameters(), 0.01)
             optimizer.step()
     node_acc = -1
@@ -190,8 +190,8 @@ def train_inductive(model, optimizer, loader, device, node_multi_label,
     return total_loss / data_count, node_acc, graph_acc, lp_auc, lp_ap
 
 
-def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=False,
-            num_features=0, relation_dimension=0, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, max_epoch=2000,
+def trainer(args, DATASET, train_loader, val_loader, test_loader, relation_embeddings, transductive=False,
+            num_features=0, relation_dimension=0, num_node_class=0, num_graph_class=0, test_per_epoch=1, val_per_epoch=1, num_epoch=200,
             save_per_epoch=100, load_model=False, cal_mrr_score=True,
             node_multi_label=False, graph_multi_label=False, link_prediction=False):
 
@@ -206,7 +206,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     tab_printer(args)
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
-    model = GraphStar(num_features=num_features, relation_dimension=relation_dimension, num_node_class=num_node_class,
+    model = GraphStar(num_features=num_features, relation_dimension=relation_dimension, relation_embeddings=relation_embeddings, num_node_class=num_node_class,
                       num_graph_class=num_graph_class, hid=args.hidden, num_star=args.num_star,
                       star_init_method=args.star_init_method, link_prediction=link_prediction,
                       heads=args.heads, cross_star=args.cross_star, num_layers=args.num_layers,
@@ -220,11 +220,6 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
                       additional_node_to_star_relation_type=args.additional_node_to_star_relation_type)
 
     model.to(args.device)
-
-    if DATASET in ['MR_win10_no_prefeat_no_repeat', 'MR_win10_no_prefeat_repeat', 'R8_win10_no_prefeat_no_repeat',
-                   'R8_win10_no_prefeat_repeat', '20ng_win10_no_prefeat_repeat', 'R52_win10_no_prefeat_no_repeat',
-                   'R52_win10_no_prefeat_repeat']:
-        print('process text classification')
 
     print(time.asctime(time.localtime(time.time())))
 
@@ -247,7 +242,8 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
     gc_accs = []
     max_gc_epoch_idx = 0
 
-    for epoch in range(0, max_epoch + 1):
+    for epoch in range(1, num_epoch+1):
+        print("\n=================== Trainer Epoch: {:02d} ===================\n".format(epoch))
         start = time.time()
         train_loss, train_node_acc, train_graph_acc, train_lp_auc, train_lp_ap = \
             train(model, optimizer, train_loader,
@@ -301,7 +297,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, transductive=F
 
         log_str = 'Epoch: {:02d}, TRAIN Loss: {:.4f}, {} || VAL Loss: {:.4f}, {} || TEST Loss: {:.4f}, {} || Max {}'.format(
             epoch, train_loss, train_str, val_loss, val_str, test_loss, test_str, max_str)
-        print("\033[1;32m", DATASET, "\033[0m", log_str)
+        print("\033[1;32m", DATASET+" results:", "\033[0m", log_str)
         print("use time : %f" % (time.time()-start))
         if epoch % save_per_epoch == 0:
             torch.save(model, os.path.join("output", DATASET + ".pkl"))
