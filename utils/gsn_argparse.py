@@ -32,6 +32,20 @@ def tab_printer(args):
     t.add_rows([["Parameter", "Value"]] + [[k.replace("_", " ").capitalize(), str(args[k])] for k in keys])
     print(t.draw())
 
+def args2string(args):
+    out_string = '<table style="width:100%">'
+    args = vars(args)
+    keys = sorted(args.keys())
+    out_string += '<tr>'
+    out_string += '<th>Parameter</th>'
+    out_string += '<th>Value</th>'
+    out_string += '</tr>'
+    for k in keys:
+        out_string += '<tr><td>' +k+ '</td>' + '<td>' + str(args[k]) + '</td></tr>'
+    out_string += '</table>'
+    return out_string
+
+
 
 def tempDevice(x):
     """
@@ -73,5 +87,5 @@ parser.add_argument('--additional_node_to_star_relation_type', type=str2bool, de
 parser.add_argument('--star_init_method', type=str, default="attn")
 parser.add_argument('--relation_score_function', type=str, default="DistMult",
                     help="DistMult")
-parser.add_argument('--dataset', type=str,default="")
+parser.add_argument('--dataset', type=str,default="FB15k_237")
 parser.add_argument('--epochs', type=int, default=2000)
