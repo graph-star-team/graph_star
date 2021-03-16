@@ -92,7 +92,11 @@ def load_data(dataset, hidden=64, node_embedding_size=16, embedding_path='embedd
     embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding_' +  dataset + '_' + str(node_embedding_size) + '.kv')
     embedded_relations = KeyedVectors.load_word2vec_format('embeddings/relation_embedding_le_' + dataset + '_' + str(hidden) + '.bin', binary=True)
 
-    all_data.x = torch.tensor(embedded_nodes.vectors, dtype=torch.float)
+    # need to sort to get correct indexing
+    sorted_embedding = []
+    for i in range(0, len(embedded_nodes.vectors)):
+        sorted_embedding.append(embedded_nodes.get_vector(str(i)))
+    all_data.x = torch.tensor(sorted_embedding, dtype=torch.float)
 
     all_data.batch = torch.zeros((1, all_data.num_nodes), dtype=torch.int64).view(-1)
 

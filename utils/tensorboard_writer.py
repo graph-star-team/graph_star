@@ -7,7 +7,7 @@ steps = 0
 epochs = 0
 writer = None
 
-def log_epoch(DATASET, epoch, train_lp_auc, train_lp_ap, train_loss, val_lp_auc, val_lp_ap, val_loss, test_lp_auc, test_lp_ap, test_loss,max_lp_auc,max_lp_ap,max_val_lp):
+def log_epoch(DATASET, train_lp_auc, train_lp_ap, train_loss, val_lp_auc, val_lp_ap, val_loss, test_lp_auc, test_lp_ap, test_loss,max_lp_auc,max_lp_ap,max_val_lp):
     global steps, epochs, writer
     writer.add_scalar('train/lp_auc', train_lp_auc, steps)
     writer.add_scalar('train/lp_ap', train_lp_ap, steps)
@@ -26,8 +26,8 @@ def log_epoch(DATASET, epoch, train_lp_auc, train_lp_ap, train_loss, val_lp_auc,
     test_str = "LP AVG: {:.4f}, ".format(sum([test_lp_auc, test_lp_ap]) / 2)
     max_str = "LP AVG: {:.4f},VAL: {:.4f} ".format(sum([max_lp_auc, max_lp_ap]) / 2, max_val_lp)
 
-    log_str = 'Epoch: {:02d}, TRAIN Loss: {:.4f}, {} || VAL Loss: {:.4f}, {} || TEST Loss: {:.4f}, {} || Max {}'.format(
-        epoch, train_loss, train_str, val_loss, val_str, test_loss, test_str, max_str)
+    log_str = 'TRAIN Loss: {:.4f}, {} || VAL Loss: {:.4f}, {} || TEST Loss: {:.4f}, {} || Max {}'.format(
+        train_loss, train_str, val_loss, val_str, test_loss, test_str, max_str)
     print("\033[1;32m" + DATASET + " results:", "\033[0m" + '\n'+log_str)
 
 

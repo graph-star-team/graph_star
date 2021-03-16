@@ -138,7 +138,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, relation_embed
     for epoch in range(1, num_epoch+1):
         print("\n=================== Epoch: {:02d} ===================\n".format(epoch))
         start = time.time()
-        cal_mrr_score = False#(epoch == num_epoch) # only test rank on last epoch
+        cal_mrr_score = (epoch == num_epoch) # only test rank on last epoch
         train_loss, train_node_acc, train_graph_acc, train_lp_auc, train_lp_ap = \
             train_transductive(model, optimizer, train_loader,
                     args.device,
@@ -169,7 +169,7 @@ def trainer(args, DATASET, train_loader, val_loader, test_loader, relation_embed
         max_lp_ap = max(test_lp_ap, max_lp_ap)
         max_val_lp = max((val_lp_ap + val_lp_auc) / 2, max_val_lp)
 
-        tw.log_epoch(DATASET, epoch, train_lp_auc, train_lp_ap, 
+        tw.log_epoch(DATASET, train_lp_auc, train_lp_ap, 
                     train_loss, 
                     val_lp_auc, 
                     val_lp_ap, val_loss, 
