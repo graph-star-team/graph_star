@@ -2,8 +2,9 @@ from torch_geometric.utils import to_networkx
 from node2vec import Node2Vec
 import os
 
-def create_node_embedding(dataset, path="embeddings", node_embedding_name="node_embedding", embedding_model_name="node_embedding_model", dimensions=16, walk_length=15, num_walks=20, workers=1, window=10, min_count=1, batch_words=4):
-    if not os.path.exists(os.path.join(path,node_embedding_name + '_' + str(dimensions) + '.kv')):
+def create_node_embedding(dataset, dataset_name, path="embeddings", dimensions=16, walk_length=15, num_walks=20, workers=1, window=10, min_count=1, batch_words=3):
+    embedding_name = 'node_embedding_' + dataset_name + '_' + str(dimensions) + ".kv"
+    if not os.path.exists(os.path.join(path, embedding_name)):
         print('Embeddings not found. Creating node embeddings...')
         G = to_networkx(dataset)
     
@@ -17,5 +18,5 @@ def create_node_embedding(dataset, path="embeddings", node_embedding_name="node_
         # (from the Node2Vec constructor)
         
         # Save embeddings for later use
-        model.wv.save_word2vec_format(os.path.join(path, node_embedding_name + '_' + str(dimensions) + ".kv"))
+        model.wv.save_word2vec_format(os.path.join(path, embedding_name))
         print(f"Saved embedding and model in the {path} folder")

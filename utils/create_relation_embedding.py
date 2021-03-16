@@ -9,11 +9,11 @@ from smart_open import open
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.WARNING)
 
-def create_relation_embedding(relations, le_relation, path="embeddings", gensimCorpus="text8", dimensions=256):
+def create_relation_embedding(relations, le_relation, dataset, path="embeddings", gensimCorpus="text8", dimensions=256):
 
 
-    kv_path = 'relation_embedding_'+str(dimensions)+'.bin'
-    kv_path_le = 'relation_embedding_le_'+str(dimensions)+'.bin'
+    kv_path = 'relation_embedding_' + dataset + '_' +str(dimensions)+'.bin'
+    kv_path_le = 'relation_embedding_le_' + dataset + '_' +str(dimensions)+'.bin'
 
     if not osp.exists(osp.join(path, kv_path)):
         print('Embeddings not found. Creating relation embeddings...')

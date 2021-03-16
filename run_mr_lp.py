@@ -25,14 +25,14 @@ def shuffle_dataset(dataset):
     dataset.edge_index = edge_index 
     return dataset
 
-def train_val_test_split(dataset, val, test):
+def train_val_test_split(dataset, train, val, test):
     # edge_indexes
-    dataset.train_pos_edge_index = dataset.edge_index
+    dataset.train_pos_edge_index = train.edge_index
     dataset.val_pos_edge_index = val.edge_index
     dataset.test_pos_edge_index = test.edge_index
     
     # relations
-    dataset.train_edge_type = dataset.edge_type
+    dataset.train_edge_type = train.edge_type
     dataset.val_edge_type = val.edge_type
     dataset.test_edge_type = test.edge_type
 
@@ -48,25 +48,7 @@ def train_val_test_split(dataset, val, test):
     
     return dataset
 
-def load_data(dataset, hidden=64, node_embedding_size=16, embedding_path='embeddings'): #TODO - dataset choice as run_mr_lp argument
-    entity_ids = pd.read_csv('./data/FB15k/entities.txt', sep='\t', header=None, names=['entity', 'id'], engine='python')
-    relation_id = pd.read_csv('./data/FB15k/relations.txt', sep='\t', header=None, names=['relation', 'id'], engine='python')
-    entities = entity_ids['entity'].values
-    relations = relation_id['relation'].values
-
-
-    # fit entity and relation encoder
-    le_entity = LabelEncoder()
-    le_entity.fit(entities)
-    le_relation = LabelEncoder()
-    le_relation.fit(relations)
-
-    np.save(path.join(embedding_path,'le_relation_classes.npy'), le_relation.classes_)
-    ''' TO LOAD SAVED ENCODER USE:
-    self.le_relation = LabelEncoder()
-    self.le_relation.classes_ = np.load(path.join('embeddings','le_relation_classes.npy'), allow_pickle=True)
-    '''
-
+def load_data(dataset, hidden=64, node_embedding_size=16, embedding_path='embeddings'):
     print('Loading '+dataset+' data...')
     columns = {'FB15k' : ['head', 'tail', 'relation'], 'FB15k_237' : ['head', 'relation', 'tail']}
 
@@ -74,37 +56,65 @@ def load_data(dataset, hidden=64, node_embedding_size=16, embedding_path='embedd
     valid = pd.read_csv('./data/'+dataset+'/valid.txt', sep='\t', header=None, names=columns[dataset], engine='python')
     test = pd.read_csv('./data/'+dataset+'/test.txt', sep='\t', header=None, names=columns[dataset], engine='python')
     
-    dataset = led.label_encode_dataset(le_entity, le_relation, train)
+    # needed for embedding all nodes across datasets (will use edge_index to split datasets)
+    all_data = pd.concat([train, valid])
+    all_data = pd.concat([all_data, test])
+    all_data.drop_duplicates(inplace=True)
+
+    entities = np.concatenate([all_data['head'].values, all_data['tail']])
+    entities = np.unique(entities)
+    relations = np.unique(all_data['relation'])
+
+    # fit entity and relation encoder
+    le_entity = LabelEncoder()
+    le_entity.fit(entities)
+    le_relation = LabelEncoder()
+    le_relation.fit(relations)
+
+    if not path.exists(embedding_path):
+        mkdir(embedding_path)
+
+    np.save(path.join(embedding_path,'le_relation_classes.npy'), le_relation.classes_)
+    ''' TO LOAD SAVED ENCODER USE:
+    self.le_relation = LabelEncoder()
+    self.le_relation.classes_ = np.load(path.join('embeddings','le_relation_classes.npy'), allow_pickle=True)
+    '''
+
+    train = led.label_encode_dataset(le_entity, le_relation, train)
     valid = led.label_encode_dataset(le_entity, le_relation, valid)
     test = led.label_encode_dataset(le_entity, le_relation, test)
 
     # create node embeddings if none exists
-    if not path.exists(embedding_path):
-        mkdir(embedding_path)
-    cne.create_node_embedding(dataset, dimensions=node_embedding_size)
-    cre.create_relation_embedding(relations, le_relation, dimensions=hidden)
-    embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding_' + str(node_embedding_size) + '.kv')
-    embedded_relations = KeyedVectors.load_word2vec_format('embeddings/relation_embedding_le_' + str(hidden) + '.bin', binary=True)
+    all_data = led.label_encode_dataset(le_entity, le_relation, all_data)
 
-    dataset.x = torch.tensor(embedded_nodes.vectors, dtype=torch.float)
-    
-    data = dataset
-    data.batch = torch.zeros((1, data.num_nodes), dtype=torch.int64).view(-1)
-    data.num_graphs = 1
-    num_features = dataset.x.shape[-1] 
+    cne.create_node_embedding(all_data, dataset, dimensions=node_embedding_size, workers=4)
+    cre.create_relation_embedding(relations, le_relation, dataset, dimensions=hidden)
+    embedded_nodes =  KeyedVectors.load_word2vec_format('embeddings/node_embedding_' +  dataset + '_' + str(node_embedding_size) + '.kv')
+    embedded_relations = KeyedVectors.load_word2vec_format('embeddings/relation_embedding_le_' + dataset + '_' + str(hidden) + '.bin', binary=True)
+
+    # need to sort to get correct indexing
+    sorted_embedding = []
+    for i in range(0, len(embedded_nodes.vectors)):
+        sorted_embedding.append(embedded_nodes.get_vector(str(i)))
+    all_data.x = torch.tensor(sorted_embedding, dtype=torch.float)
+
+    all_data.batch = torch.zeros((1, all_data.num_nodes), dtype=torch.int64).view(-1)
+
+    all_data.num_graphs = 1
+    num_features = all_data.x.shape[-1] 
     num_relations = len(np.unique(relations))
 
     # Shuffle and split
-    data = shuffle_dataset(data)
-    data = train_val_test_split(data, valid, test)    
+    #data = shuffle_dataset(all_data) why?
+    data = train_val_test_split(all_data, train, valid, test)    
     
     data.edge_index = torch.cat([data.train_pos_edge_index, data.val_pos_edge_index, data.test_pos_edge_index], dim=1)
-    data.edge_type = torch.cat([data.edge_type, valid.edge_type, test.edge_type], dim=0)
+    data.edge_type = torch.cat([train.edge_type, valid.edge_type, test.edge_type], dim=0)
     
     print(f"no. unique relations: {num_relations}")
-    print(f"size of training: {data.train_pos_edge_index.size()}")
-    print(f"size of validation: {data.val_pos_edge_index.size()}")
-    print(f"size of testing: {data.test_pos_edge_index.size()}")
+    print(f"size of training: p-{data.train_pos_edge_index.size()}, n-{data.train_neg_edge_index.size()}")
+    print(f"size of validation: p-{data.val_pos_edge_index.size()}, n-{data.val_neg_edge_index.size()}")
+    print(f"size of testing: p-{data.test_pos_edge_index.size()}, n-{data.test_neg_edge_index.size()}")
 
     return data, num_features, num_relations, embedded_relations
 
