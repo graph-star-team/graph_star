@@ -1,12 +1,8 @@
+import math
 import torch
 import torch.nn.functional as F
-from torch.nn import Parameter
 from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import add_self_loops, softmax
-
-from torch_geometric.utils import scatter_
-import math
-import torch.nn.init as init
+from torch_geometric.utils import softmax,  scatter_
 
 
 class GraphStarConv(MessagePassing):
@@ -79,8 +75,12 @@ class GraphStarConv(MessagePassing):
 
         assert out_channels % heads == 0
         self.size_pre_head = out_channels // heads
-        self.nWq = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(1)])
-        self.nWk = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
+        self.nWq = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(1)]
+            )
+        self.nWk = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)]
+            )
         # self.nWv = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
         self.nWo = torch.nn.Linear(out_channels, out_channels)
 
