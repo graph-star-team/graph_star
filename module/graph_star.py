@@ -165,9 +165,9 @@ class GraphStar(nn.Module):
 
     def lp_score(self, z, edge_index, edge_type):
         z = F.dropout(z, 0.5, training=self.training)   
-        pred = self.relation_score_function(z[edge_index[0]],
-                                            self.RW[edge_type],
-                                            z[edge_index[1]]
+        pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
+                                            self.RW[edge_type].unsqueeze(1),
+                                            z[edge_index[1]].unsqueeze(1)
                                             )
         return pred
 
@@ -205,7 +205,7 @@ class GraphStar(nn.Module):
 
     def DistMult(self, head, relation, tail):
         # Check dimensionality of inputs
-        score = head.unsqueeze(1) * relation.unsqueeze(1) * tail.unsqueeze(1)
+        score = head * relation * tail
         return score.sum(dim=2)
 
 
