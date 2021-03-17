@@ -12,8 +12,17 @@ logging.basicConfig(
 )
 
 
-    kv_path = 'relation_embedding_' + dataset + '_' +str(dimensions)+'.bin'
-    kv_path_le = 'relation_embedding_le_' + dataset + '_' +str(dimensions)+'.bin'
+def create_relation_embedding(
+    relations,
+    le_relation,
+    dataset,
+    path="embeddings",
+    gensimCorpus="text8",
+    dimensions=256,
+):
+
+    kv_path = "relation_embedding_" + dataset + "_" + str(dimensions) + ".bin"
+    kv_path_le = "relation_embedding_le_" + dataset + "_" + str(dimensions) + ".bin"
 
     if not osp.exists(osp.join(path, kv_path)):
         print("Embeddings not found. Creating relation embeddings...")
@@ -53,11 +62,7 @@ logging.basicConfig(
         )
 
 
-<<<<<<< HEAD
 def save_word2vec_format(fname, vocab, vector_size, binary=True):
-=======
-def save_word2vec_format(fname, vocab, vector_size, binary=True):    
->>>>>>> 3c7b452106683203d00bc388caaf611c8e392bad
     total_vec = len(vocab)
     with open(fname, "wb") as fout:
         print(total_vec, vector_size)

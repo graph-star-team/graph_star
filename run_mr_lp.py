@@ -133,7 +133,7 @@ def load_data(dataset, hidden=64, node_embedding_size=16, embedding_path="embedd
     for i in range(0, len(embedded_nodes.vectors)):
         sorted_embedding.append(embedded_nodes.get_vector(str(i)))
     all_data.x = torch.tensor(sorted_embedding, dtype=torch.float)
-    
+
     sorted_embedding = []
     for i in range(0, len(embedded_relations.vectors)):
         sorted_embedding.append(embedded_relations.get_vector(str(i)))
@@ -163,15 +163,22 @@ def load_data(dataset, hidden=64, node_embedding_size=16, embedding_path="embedd
 def main(_args):
     print("@@@@@@@@@@@@@@@@ Multi-Relational Link Prediction @@@@@@@@@@@@@@@@")
     args = gap.parser.parse_args(_args)
-    data, num_features, num_relations, embedded_relations = load_data(hidden=args.hidden, dataset=args.dataset)
-    #gap.tab_printer(data)
-    
+    data, num_features, num_relations, embedded_relations = load_data(
+        hidden=args.hidden, dataset=args.dataset
+    )
+    # gap.tab_printer(data)
+
     # python run_mr_lp.py --dropout=0 --hidden=128 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=200 --residual=True --residual_star=True --dataset=FB15k_237 --device=cpu --epochs=2
-    trainer.trainer(args, args.dataset, data,
-                    num_features=num_features, num_relations=num_relations, relation_embeddings=embedded_relations,
-                    num_epoch=args.epochs) 
-    
+    trainer.trainer(
+        args,
+        args.dataset,
+        data,
+        num_features=num_features,
+        num_relations=num_relations,
+        relation_embeddings=embedded_relations,
+        num_epoch=args.epochs,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])
