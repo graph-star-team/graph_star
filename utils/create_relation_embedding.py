@@ -11,7 +11,6 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 def create_relation_embedding(relations, le_relation, dataset, path="embeddings", gensimCorpus="text8", dimensions=256):
 
-    plain_kv = 'relation_embedding_' + dataset + '_' +str(dimensions)+ '.kv'
     kv_path = 'relation_embedding_' + dataset + '_' +str(dimensions)+'.bin'
     kv_path_le = 'relation_embedding_le_' + dataset + '_' +str(dimensions)+'.bin'
 
@@ -37,7 +36,6 @@ def create_relation_embedding(relations, le_relation, dataset, path="embeddings"
         
         save_word2vec_format(binary=True, fname=osp.join(path, kv_path), vocab=keyedVectors, vector_size=dimensions)
         save_word2vec_format(binary=True, fname=osp.join(path, kv_path_le), vocab=keyedVectors_le, vector_size=dimensions)
-        save_word2vec_format(fname=osp.join(path, plain_kv), vocab=keyedVectors_le, vector_size=dimensions)
 
 
 

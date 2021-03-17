@@ -178,7 +178,7 @@ class GraphStar(nn.Module):
 
     def lp_test(self, pred, y):
 
-        y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
+        y, pred = y.detach().numpy(), pred.detach().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
 
 

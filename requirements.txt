@@ -4,7 +4,6 @@ gensim
 isodate==0.6.0
 joblib==0.14
 kiwisolver==1.0.1
-matplotlib==3.0.3
 networkx==2.3
 nltk
 node2vec
