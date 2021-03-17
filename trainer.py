@@ -24,16 +24,8 @@ test_neg_sampling_queue = None
 val_neg_sampling_queue = None
 
 
-def train_transductive(
-    model,
-    optimizer,
-    loader,
-    device,
-    node_multi_label,
-    graph_multi_label,
-    mode="train",
-    cal_mrr_score=False,
-):
+def train_transductive(model, optimizer, data, device, node_multi_label,
+                       graph_multi_label, mode="train", cal_mrr_score=False):
     global train_neg_sampling_queue, test_neg_sampling_queue, val_neg_sampling_queue
     if mode == "train":
         model.train()
@@ -43,97 +35,72 @@ def train_transductive(
     total_loss = 0
     lp_auc = lp_ap = None
     data_count = 0
-    for data in loader:
-        data_count += data.num_graphs
-        num_graphs = data.num_graphs
-        data = data.to(device)
-        optimizer.zero_grad()
+    num_graphs = data.num_graphs
+    data_count += num_graphs
 
-        train_edge_index, train_edge_type = get_edge_info(data, "train")
-        star_seed = data.star if hasattr(data, "star") else None
+    # appearently comsumes memory
+    #data.to(device)
 
-        if mode == "train":
-            logits_node, logits_star, logits_lp = model(
-                data.x,
-                train_edge_index,
-                data.batch,
-                star=star_seed,
-                edge_type=train_edge_type,
-            )
-        else:
-            with torch.no_grad():
-                logits_node, logits_star, logits_lp = model(
-                    data.x,
-                    train_edge_index,
-                    data.batch,
-                    star=star_seed,
-                    edge_type=train_edge_type,
-                )
-        loss = None
+    optimizer.zero_grad()
 
-        pei, pet = get_edge_info(data, mode)
-        if mode == "train":
-            print("Train")
-            nei = data.train_neg_edge_index
-        elif mode == "val":
-            print("Validation")
-            nei = data.val_neg_edge_index
-        else:
-            print("Test")
-            nei = data.test_neg_edge_index
+    train_edge_index, train_edge_type = get_edge_info(data, "train")
+    star_seed = data.star if hasattr(data, "star") else None
 
-        net = torch.randint(
-            low=min(data.edge_type), high=max(data.edge_type), size=(nei.size(-1),)
-        )
-        nei, net = nei.to(pei.device), net.to(pei.device)
-        ei = torch.cat([pei, nei], dim=-1)
-        et = torch.cat([pet, net], dim=-1)
-        # TODO: Need to save logits, edge index and edge type
-        model.updateZ(logits_lp)
-        pred = model.lp_score(torch.sigmoid(logits_lp), ei, et)
+    if mode == "train":
+        logits_node, logits_star, logits_lp = \
+            model(data.x, train_edge_index, data.batch, star=star_seed, edge_type=train_edge_type)
+    else:
+        with torch.no_grad():
+            logits_node, logits_star, logits_lp = \
+                model(data.x, train_edge_index, data.batch, star=star_seed, edge_type=train_edge_type)
+    loss = None
 
-        y = torch.cat(
-            [logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0
-        )
+    pei, pet = get_edge_info(data, mode)
+    if mode == "train":
+        print("Train")
+        nei = data.train_neg_edge_index       
+    elif mode == "val":  
+        print("Validation")  
+        nei = data.val_neg_edge_index
+    else:
+        print("Test")
+        nei = data.test_neg_edge_index
 
-        loss_ = model.lp_loss(pred, y)
-        loss = loss_ if loss is None else loss + loss_
-        lp_auc, lp_ap = model.lp_test(pred, y)
-        if ((mode == "test")) and cal_mrr_score:
-            model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
+    net = torch.randint(low=min(data.edge_type), high=max(data.edge_type), size=(nei.size(-1),))   
+    nei, net = nei.to(pei.device), net.to(pei.device)
+    ei = torch.cat([pei, nei], dim=-1)
+    et = torch.cat([pet, net], dim=-1)
+    # TODO: Need to save logits, edge index and edge type
+    model.updateZ(logits_lp)
 
-        total_loss += loss.item() * num_graphs
-        if mode == "train":
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
-            optimizer.step()
-    node_acc = -1
-    graph_acc = -1
-    return total_loss / data_count, node_acc, graph_acc, lp_auc, lp_ap
+    pred = model.lp_score(torch.sigmoid(logits_lp), ei, et)
+
+    y = torch.cat([logits_lp.new_ones(pei.size(-1)), logits_lp.new_zeros(nei.size(-1))], dim=0)
+    
+    loss_ = model.lp_loss(pred, y)
+    loss = loss_ if loss is None else loss + loss_
+    lp_auc, lp_ap = model.lp_test(pred, y)
+    if ((mode == "test")) and cal_mrr_score: 
+        model.lp_log(logits_lp, pei, pet, data.edge_index, data.edge_type)
+
+    total_loss += loss * num_graphs
+    
+    if mode == "train":
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
+        optimizer.step()
+    return total_loss / data_count, lp_auc, lp_ap
 
 
-def trainer(
-    args,
-    DATASET,
-    train_loader,
-    val_loader,
-    test_loader,
-    relation_embeddings,
-    num_relations,
-    num_features=0,
-    epochs_per_test=1,
-    epoch_per_val=1,
-    num_epoch=200,
-    save_per_epoch=100,
-    load_model=False,
-    cal_mrr_score=True,
-    node_multi_label=False,
-    graph_multi_label=False,
-):
 
-    print(
-        "\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Print out args @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-    )
+def trainer(args, DATASET_NAME, dataset, relation_embeddings, num_relations,
+            num_features=0, epochs_per_test=1, epoch_per_val=1, num_epoch=200,
+            save_per_epoch=100, load_model=False, cal_mrr_score=True,
+            node_multi_label=False, graph_multi_label=False):
+
+    # GPU cuDNN auto tuner
+    #torch.backends.cudnn.benchmark = True
+    print("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Print out args @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
     tab_printer(args)
     print(
         "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
@@ -166,7 +133,7 @@ def trainer(
     )
 
     model.to(args.device)
-    tw.init_writer(DATASET, gap.args2string(args))
+    tw.init_writer(DATASET_NAME, gap.args2string(args))
 
     # Create directory, if it doesn't already exists
     out_path = "output"
@@ -190,58 +157,30 @@ def trainer(
     for epoch in range(1, num_epoch + 1):
         print("\n=================== Epoch: {:02d} ===================\n".format(epoch))
         start = time.time()
-        cal_mrr_score = epoch == num_epoch  # only test rank on last epoch
-        (
-            train_loss,
-            train_node_acc,
-            train_graph_acc,
-            train_lp_auc,
-            train_lp_ap,
-        ) = train_transductive(
-            model,
-            optimizer,
-            train_loader,
-            args.device,
-            node_multi_label,
-            graph_multi_label,
-            mode="train",
-        )
-        if epoch % epoch_per_val == 0:  # TODO: undo break
-            (
-                val_loss,
-                val_node_acc,
-                val_graph_acc,
-                val_lp_auc,
-                val_lp_ap,
-            ) = train_transductive(
-                model,
-                optimizer,
-                val_loader,
-                args.device,
-                node_multi_label,
-                graph_multi_label,
-                mode="val",
-            )
+        cal_mrr_score = (epoch == num_epoch) # only test rank on last epoch
+        train_loss, train_lp_auc, train_lp_ap = \
+            train_transductive(model, optimizer, dataset,
+                    args.device,
+                    node_multi_label,
+                    graph_multi_label,
+                    mode="train")
+        if epoch % epoch_per_val == 0: #TODO: undo break
+            val_loss, val_lp_auc, val_lp_ap = \
+                train_transductive(model, optimizer, dataset,
+                        args.device,
+                        node_multi_label,
+                        graph_multi_label,
+                        mode="val")
         else:
             val_loss, val_lp_auc, val_lp_ap = 0, 0, 0
 
-        if epoch % epochs_per_test == 0:  # TODO undo break
-            (
-                test_loss,
-                test_node_acc,
-                test_graph_acc,
-                test_lp_auc,
-                test_lp_ap,
-            ) = train_transductive(
-                model,
-                optimizer,
-                test_loader,
-                args.device,
-                node_multi_label,
-                graph_multi_label,
-                mode="test",
-                cal_mrr_score=cal_mrr_score,
-            )
+        if epoch % epochs_per_test == 0: #TODO undo break
+            test_loss, test_lp_auc, test_lp_ap = \
+                train_transductive(model, optimizer, dataset,
+                        args.device,
+                        node_multi_label,
+                        graph_multi_label,
+                        mode="test", cal_mrr_score=cal_mrr_score)
         else:
             test_loss, test_lp_auc, test_lp_ap = 0, 0, 0
 
@@ -249,28 +188,24 @@ def trainer(
         max_lp_ap = max(test_lp_ap, max_lp_ap)
         max_val_lp = max((val_lp_ap + val_lp_auc) / 2, max_val_lp)
 
-        tw.log_epoch(
-            DATASET,
-            train_lp_auc,
-            train_lp_ap,
-            train_loss,
-            val_lp_auc,
-            val_lp_ap,
-            val_loss,
-            test_lp_auc,
-            test_lp_ap,
-            test_loss,
-            max_lp_auc,
-            max_lp_ap,
-            max_val_lp,
-        )
-        print("Epoch duration: %f" % (time.time() - start))
+        tw.log_epoch(DATASET_NAME, train_lp_auc, train_lp_ap, 
+                    train_loss, 
+                    val_lp_auc, 
+                    val_lp_ap, val_loss, 
+                    test_lp_auc, 
+                    test_lp_ap, 
+                    test_loss,
+                    max_lp_auc,
+                    max_lp_ap,
+                    max_val_lp
+                    )
+        print("Epoch duration: %f" % (time.time()-start))
         scheduler.step(train_loss)
         scheduler.step(val_loss)
         scheduler.step(test_loss)
 
         if epoch % save_per_epoch == 0:
-            torch.save(model, path.join(out_path, DATASET + ".pkl"))
+            torch.save(model, path.join(out_path, DATASET_NAME + ".pkl"))
 
     tw.writer.close()
     return max_lp_auc, max_lp_ap

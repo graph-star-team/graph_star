@@ -234,15 +234,11 @@ class GraphStar(nn.Module):
         return x, stars, x_lp
 
     def lp_score(self, z, edge_index, edge_type):
-        rel_embeddings = nn.Parameter(
-            torch.tensor([self.RW[str(rel.item())] for rel in edge_type])
-        )
-        z = F.dropout(z, 0.5, training=self.training)
-        pred = self.relation_score_function(
-            z[edge_index[0]].unsqueeze(1),
-            rel_embeddings.unsqueeze(1),
-            z[edge_index[1]].unsqueeze(1),
-        )
+        z = F.dropout(z, 0.5, training=self.training)   
+        pred = self.relation_score_function(z[edge_index[0]].unsqueeze(1),
+                                            self.RW[edge_type].unsqueeze(1),
+                                            z[edge_index[1]].unsqueeze(1)
+                                            )
         return pred
 
     def lp_loss(self, pred, y):
@@ -250,7 +246,7 @@ class GraphStar(nn.Module):
 
     def lp_test(self, pred, y):
 
-        y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
+        y, pred = y.detach().numpy(), pred.detach().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
 
     def add_star_edge(self, edge_index, edge_type, x_size, batch):
@@ -283,7 +279,6 @@ class GraphStar(nn.Module):
     def DistMult(self, head, relation, tail):
         # Check dimensionality of inputs
         score = head * relation * tail
-
         return score.sum(dim=2)
 
     def updateZ(self, z):
