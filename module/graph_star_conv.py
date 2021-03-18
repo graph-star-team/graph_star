@@ -136,11 +136,11 @@ class GraphStarConv(MessagePassing):
             xq, xk, xv, edge_index, num_nodes
         )  # num_edge, heads, size_pre_head
         if (aggr=="add"):
-            out = torch.scatter_add(out, edge_index_i, dim_size=size)
+            out = scatter_add(dim=0, src=out, index=edge_index_i, dim_size=size)
         elif (aggr=="mean"):
-            out = torch.scatter_mean(out, edge_index_i, dim_size=size)
+            out = scatter_mean(dim=0, src=out, index=edge_index_i, dim_size=size)
         else:
-            out = torch.scatter_max(out, edge_index_i, dim_size=size)
+            out = scatter_max(sdim=0, src=out, index=edge_index_i, dim_size=size)
         out = self.update(out)  # num_nodes, heads * size_pre_head
 
         out = self.nWo(out)  # num_nodes, out_channels

@@ -151,11 +151,11 @@ class GraphStarConv(MessagePassing):
                 out = self.message(xq, xk, xv, edge_index_i, num_nodes)
 
                 if (aggr=="add"):
-                    out = torch.scatter_add(out, edge_index_i, dim_size=size)
+                    out = scatter_add(dim=0, src=out, index=edge_index_i, dim_size=size)
                 elif (aggr=="mean"):
-                    out = torch.scatter_mean(out, edge_index_i, dim_size=size)
+                    out = scatter_mean(dim=0, src=out, index=edge_index_i, dim_size=size)
                 else:
-                    out = torch.scatter_max(out, edge_index_i, dim_size=size)
+                    out = scatter_max(sdim=0, src=out, index=edge_index_i, dim_size=size)
                 out = self.update(out)
                 if out.size(0) < num_nodes:
                     out = torch.cat(
