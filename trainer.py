@@ -75,13 +75,10 @@ def train_transductive(
 
     pei, pet = get_edge_info(data, mode)
     if mode == "train":
-        print("Train")
         nei = data.train_neg_edge_index
     elif mode == "val":
-        print("Validation")
         nei = data.val_neg_edge_index
     else:
-        print("Test")
         nei = data.test_neg_edge_index
 
     net = torch.randint(
@@ -133,13 +130,8 @@ def trainer(
 
     # GPU cuDNN auto tuner
     # torch.backends.cudnn.benchmark = True
-    print(
-        "\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Print out args @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-    )
+    print(f"torch: {torch.__version__} \n")
     tab_printer(args)
-    print(
-        "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-    )
 
     model = GraphStar(
         num_features=num_features,

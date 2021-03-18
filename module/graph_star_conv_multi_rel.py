@@ -2,8 +2,6 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import softmax
-
-from torch_geometric.utils import scatter_
 import math
 
 
@@ -152,7 +150,12 @@ class GraphStarConv(MessagePassing):
 
                 out = self.message(xq, xk, xv, edge_index_i, num_nodes)
 
-                out = scatter_(aggr, out, edge_index_i, dim_size=size)
+                if (aggr=="add"):
+                    out = torch.scatter_add(out, edge_index_i, dim_size=size)
+                elif (aggr=="mean"):
+                    out = torch.scatter_mean(out, edge_index_i, dim_size=size)
+                else:
+                    out = torch.scatter_max(out, edge_index_i, dim_size=size)
                 out = self.update(out)
                 if out.size(0) < num_nodes:
                     out = torch.cat(

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import global_mean_pool as gap
+from torch_geometric.nn.glob import global_mean_pool as gap
 from sklearn.metrics import (
     roc_auc_score,
     average_precision_score,
@@ -324,13 +324,12 @@ class GraphStar(nn.Module):
             rank = (pred > target.sum().item()).sum().item()
 
             # filter
-            filter_idx = (
+            filter_idx = (torch.nonzero(
                 (
                     # All indexes of true < ?, r, t> triples
                     (known_edge_index[1] == pos_edge_index[1][i])
                     * (known_edge_type == pos_edge_type[i])
-                )
-                .nonzero()
+                ), as_tuple=False)
                 .view(-1)
             )
 
@@ -374,12 +373,12 @@ class GraphStar(nn.Module):
             rank = (pred > target.sum().item()).sum().item()
 
             # Get ids of all <h, r, ?>
-            filter_idx = (
+            filter_idx = (torch.nonzero(
                 (
                     (known_edge_index[1] == pos_edge_index[1][i])
                     * (known_edge_type == pos_edge_type[i])
                 )
-                .nonzero()
+                , as_tuple=False)
                 .view(-1)
             )
 

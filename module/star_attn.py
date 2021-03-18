@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import math
 import sys
 from torch_geometric.utils import softmax
-from torch_geometric.utils import scatter_
+from torch_scatter import scatter_add
 
 sys.path.append("..")
 
@@ -88,7 +88,8 @@ class StarAttn(nn.Module):
         xv = torch.index_select(xv, 0, edge_index_j)
 
         score = self.cal_att_score(xq, xk, self.heads)
-        coef = softmax(score, edge_index_i, len(x))
+
+        coef = softmax(score, edge_index_i, num_nodes=len(x))
 
         # TODO add tensorboard
         # [:-num_star]  is star to node
@@ -98,8 +99,11 @@ class StarAttn(nn.Module):
         xv = F.dropout(xv, p=self.dropout, training=self.training)
 
         out = xv * coef.view(-1, self.heads, 1)
+        # (Tensor input, int dim, Tensor index, Tensor src)
+        #out = torch.zeros(tmp.size())
 
-        out = scatter_("add", out, edge_index_i)[len(nodes) :]
+        #  scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1, out: Optional[torch.Tensor] = None, dim_size: Optional[int] = None, reduce: str = "sum")
+        out = scatter_add(dim=0, src=out, index=edge_index_i)[len(nodes) :]
         new_stars = out.view(-1, num_star, self.out_channels)
 
         if self.activation is not None:
