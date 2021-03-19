@@ -127,7 +127,7 @@ def trainer(
     node_multi_label=False,
     graph_multi_label=False,
 ):
-
+   
     # GPU cuDNN auto tuner
     # torch.backends.cudnn.benchmark = True
     print(f"torch: {torch.__version__} \n")
@@ -160,6 +160,7 @@ def trainer(
     )
 
     model.to(args.device)
+    dataset.to(args.device)
     tw.init_writer(DATASET_NAME, gap.args2string(args))
 
     # Create directory, if it doesn't already exists

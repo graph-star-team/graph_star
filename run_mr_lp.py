@@ -166,8 +166,8 @@ def main(_args):
     data, num_features, num_relations, embedded_relations = load_data(
         hidden=args.hidden, dataset=args.dataset
     )
-    # gap.tab_printer(data)
 
+    embedded_relations.to(args.device)
     # python run_mr_lp.py --dropout=0 --hidden=128 --l2=5e-4 --num_layers=3 --cross_layer=False --patience=200 --residual=True --residual_star=True --dataset=FB15k_237 --device=cpu --epochs=2
     trainer.trainer(
         args,

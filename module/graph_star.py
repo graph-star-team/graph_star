@@ -165,7 +165,7 @@ class GraphStar(nn.Module):
                 layer_norm=layer_norm_star,
             )
         self.rl = nn.Linear(num_relations, hid)
-        self.RW = relation_embeddings
+        self.RW = nn.Parameter(relation_embeddings)
         self.LP_loss = nn.BCEWithLogitsLoss()
 
     def forward(self, x, edge_index, batch, star=None, y=None, edge_type=None):
@@ -247,7 +247,7 @@ class GraphStar(nn.Module):
 
     def lp_test(self, pred, y):
 
-        y, pred = y.detach().numpy(), pred.detach().numpy()
+        y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
         return roc_auc_score(y, pred), average_precision_score(y, pred)
 
     def add_star_edge(self, edge_index, edge_type, x_size, batch):
