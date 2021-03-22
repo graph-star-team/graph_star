@@ -92,7 +92,7 @@ Combined average of AUC and AP scores. CPC denotes the average performance onthe
 | Models  | CPC  | FB15k  |  FB15k-237
 | :------------ | :------------ | :------------ | :------------|
 | GraphStar  | 0.969  |   |   |
-| **mrGraphStar**  |   | 0.466  | 0.968  |
+| **mrGraphStar**  |   | 0.928  | 0.983  |
 
 ## Performance of original architecture
 
