@@ -2,8 +2,6 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import add_self_loops, softmax
-
-from torch_geometric.utils import scatter_
 import math
 
 
@@ -44,19 +42,20 @@ class GraphStarConv(MessagePassing):
             an additive bias. (default: :obj:`True`)
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 layer=0,
-                 heads=1,
-                 dropout=0.1,
-                 num_star=1,
-                 residual=True,
-                 layer_norm=True,
-                 use_e=True,
-                 activation=None,
-                 num_relations=1
-                 ):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        layer=0,
+        heads=1,
+        dropout=0.1,
+        num_star=1,
+        residual=True,
+        layer_norm=True,
+        use_e=True,
+        activation=None,
+        num_relations=1,
+    ):
         super(GraphStarConv, self).__init__()
         self.layer = layer
         self.use_e = use_e
@@ -94,7 +93,7 @@ class GraphStarConv(MessagePassing):
             nodes = torch.cat([nodes, stars], dim=0)
 
         edge_index = add_self_loops(edge_index, num_nodes=x.size(0))
-        nodes = self.propagate('add', edge_index, x=nodes, num_nodes=num_nodes)
+        nodes = self.propagate("add", edge_index, x=nodes, num_nodes=num_nodes)
         return nodes
 
     def propagate(self, aggr, edge_index, size=None, **kwargs):
@@ -113,22 +112,35 @@ class GraphStarConv(MessagePassing):
                 and to update node embeddings.
         """
 
-        assert aggr in ['add', 'mean', 'max']
-        kwargs['edge_index'] = edge_index
+        assert aggr in ["add", "mean", "max"]
+        kwargs["edge_index"] = edge_index
         x = kwargs["x"]
         num_nodes = kwargs["num_nodes"]
 
         # x = num_node, channel
-        xq = self.nWq(x).view(-1, self.heads, self.size_pre_head)  # num_nodes + num_star, heads, size_pre_head
-        xk = self.nWk(x).view(-1, self.heads, self.size_pre_head)  # num_nodes + num_star, heads, size_pre_head
-        xv = self.nWv(x).view(-1, self.heads, self.size_pre_head)  # num_nodes + num_star, heads, size_pre_head
+        xq = self.nWq(x).view(
+            -1, self.heads, self.size_pre_head
+        )  # num_nodes + num_star, heads, size_pre_head
+        xk = self.nWk(x).view(
+            -1, self.heads, self.size_pre_head
+        )  # num_nodes + num_star, heads, size_pre_head
+        xv = self.nWv(x).view(
+            -1, self.heads, self.size_pre_head
+        )  # num_nodes + num_star, heads, size_pre_head
 
         xq = torch.index_select(xq, 0, edge_index[0])  # num_edge, heads, size_pre_head
         xk = torch.index_select(xk, 0, edge_index[1])  # num_edge, heads, size_pre_head
         xv = torch.index_select(xv, 0, edge_index[1])  # num_edge, heads, size_pre_head
 
-        out = self.message(xq, xk, xv, edge_index, num_nodes)  # num_edge, heads, size_pre_head
-        out = scatter_(aggr, out, edge_index[0], dim_size=size)  # num_nodes, heads, size_pre_head
+        out = self.message(
+            xq, xk, xv, edge_index, num_nodes
+        )  # num_edge, heads, size_pre_head
+        if (aggr=="add"):
+            out = scatter_add(dim=0, src=out, index=edge_index_i, dim_size=size)
+        elif (aggr=="mean"):
+            out = scatter_mean(dim=0, src=out, index=edge_index_i, dim_size=size)
+        else:
+            out = scatter_max(sdim=0, src=out, index=edge_index_i, dim_size=size)
         out = self.update(out)  # num_nodes, heads * size_pre_head
 
         out = self.nWo(out)  # num_nodes, out_channels
@@ -158,12 +170,13 @@ class GraphStarConv(MessagePassing):
 
     def cal_att_score(self, q, k, heads):
         out_channel = q.size(-1)
-        score = torch.matmul(q.view(-1, heads, 1, out_channel), k.view(-1, heads, out_channel, 1)).view(
-            -1, heads)
+        score = torch.matmul(
+            q.view(-1, heads, 1, out_channel), k.view(-1, heads, out_channel, 1)
+        ).view(-1, heads)
         score = score / math.sqrt(out_channel)
         return score
 
     def __repr__(self):
-        return '{}({}, {}, heads={})'.format(self.__class__.__name__,
-                                             self.in_channels,
-                                             self.out_channels, self.heads)
+        return "{}({}, {}, heads={})".format(
+            self.__class__.__name__, self.in_channels, self.out_channels, self.heads
+        )

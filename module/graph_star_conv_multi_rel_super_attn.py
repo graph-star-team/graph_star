@@ -1,12 +1,10 @@
+import math
 import torch
 import torch.nn.functional as F
-from torch.nn import Parameter
 from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import add_self_loops, softmax
+from torch_geometric.utils import softmax
+from torch_scatter import scatter_add, scatter_mean, scatter_max
 
-from torch_geometric.utils import scatter_
-import math
-import torch.nn.init as init
 
 
 class GraphStarConv(MessagePassing):
@@ -79,8 +77,12 @@ class GraphStarConv(MessagePassing):
 
         assert out_channels % heads == 0
         self.size_pre_head = out_channels // heads
-        self.nWq = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(1)])
-        self.nWk = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
+        self.nWq = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(1)]
+            )
+        self.nWk = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)]
+            )
         # self.nWv = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
         self.nWo = torch.nn.Linear(out_channels, out_channels)
 
@@ -199,7 +201,7 @@ class GraphStarConv(MessagePassing):
         xv = torch.cat(xv_list, dim=0)
         score = torch.cat(score_list, dim=0)
 
-        coef = softmax(score, edge_index_i, num_nodes)
+        coef = softmax(score, edge_index_i, num_nodes=len(x))
 
         # TODO add tensorboard
         # [:-(num_self_relation+num_node_2_star_rel)]  is node to node
@@ -210,8 +212,12 @@ class GraphStarConv(MessagePassing):
         xv = F.dropout(xv, p=self.dropout, training=self.training)
 
         out = xv * coef.view(-1, self.heads, 1)
-
-        out = scatter_(aggr, out, edge_index_i, dim_size=size)
+        if (aggr=="add"):
+            out = scatter_add(dim=0, src=out, index=edge_index_i, dim_size=size)
+        elif (aggr=="mean"):
+            out = scatter_mean(dim=0, src=out, index=edge_index_i, dim_size=size)
+        else:
+            out = scatter_max(sdim=0, src=out, index=edge_index_i, dim_size=size)
         out = self.update(out)
         # out = self.nWo(out)
         # out = torch.stack(out_list, dim=0)

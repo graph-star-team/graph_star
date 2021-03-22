@@ -4,17 +4,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 import sys
-from torch_geometric.utils import add_self_loops, softmax
-from torch_geometric.utils import scatter_
+from torch_geometric.utils import softmax
+from torch_scatter import scatter_add
 
 sys.path.append("..")
-import utils.tensorboard_writer as tw
-
 
 class StarAttn(nn.Module):
-
-    def __init__(self, heads, use_star, cross_star, in_channels, out_channels, dropout=0.1, residual=True, layer=0,
-                 coef_dropout=0.2, layer_norm=True, activation=F.elu):
+    def __init__(
+        self,
+        heads,
+        use_star,
+        cross_star,
+        in_channels,
+        out_channels,
+        dropout=0.1,
+        residual=True,
+        layer=0,
+        coef_dropout=0.2,
+        layer_norm=True,
+        activation=F.elu,
+    ):
         super(StarAttn, self).__init__()
         self.coef_dropout = coef_dropout
         self.layer = layer
@@ -54,8 +63,15 @@ class StarAttn(nn.Module):
 
         # add star self loop
         if self.use_star:
-            star_row = torch.arange(start=len(nodes), end=len(nodes) + len(stars), dtype=dtype, device=device)
-            edge_index = torch.cat([edge_index, torch.stack([star_row, star_row], dim=0)], dim=1)
+            star_row = torch.arange(
+                start=len(nodes),
+                end=len(nodes) + len(stars),
+                dtype=dtype,
+                device=device,
+            )
+            edge_index = torch.cat(
+                [edge_index, torch.stack([star_row, star_row], dim=0)], dim=1
+            )
         # TODO add cross star!
 
         edge_index_i = edge_index[0]
@@ -72,7 +88,8 @@ class StarAttn(nn.Module):
         xv = torch.index_select(xv, 0, edge_index_j)
 
         score = self.cal_att_score(xq, xk, self.heads)
-        coef = softmax(score, edge_index_i, len(x))
+
+        coef = softmax(score, edge_index_i, num_nodes=len(x))
 
         # TODO add tensorboard
         # [:-num_star]  is star to node
@@ -82,8 +99,11 @@ class StarAttn(nn.Module):
         xv = F.dropout(xv, p=self.dropout, training=self.training)
 
         out = xv * coef.view(-1, self.heads, 1)
+        # (Tensor input, int dim, Tensor index, Tensor src)
+        #out = torch.zeros(tmp.size())
 
-        out = scatter_("add", out, edge_index_i)[len(nodes):]
+        #  scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1, out: Optional[torch.Tensor] = None, dim_size: Optional[int] = None, reduce: str = "sum")
+        out = scatter_add(dim=0, src=out, index=edge_index_i)[len(nodes) :]
         new_stars = out.view(-1, num_star, self.out_channels)
 
         if self.activation is not None:
@@ -96,7 +116,8 @@ class StarAttn(nn.Module):
 
     def cal_att_score(self, q, k, heads):
         out_channel = q.size(-1)
-        score = torch.matmul(q.view(-1, heads, 1, out_channel), k.view(-1, heads, out_channel, 1)).view(
-            -1, heads)
+        score = torch.matmul(
+            q.view(-1, heads, 1, out_channel), k.view(-1, heads, out_channel, 1)
+        ).view(-1, heads)
         score = score / math.sqrt(out_channel)
         return score

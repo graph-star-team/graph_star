@@ -1,12 +1,8 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Parameter
 from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import add_self_loops, softmax
-
-from torch_geometric.utils import scatter_
+from torch_geometric.utils import softmax
 import math
-import torch.nn.init as init
 
 
 class GraphStarConv(MessagePassing):
@@ -46,19 +42,20 @@ class GraphStarConv(MessagePassing):
             an additive bias. (default: :obj:`True`)
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 layer=0,
-                 heads=1,
-                 dropout=0.1,
-                 num_star=1,
-                 residual=True,
-                 layer_norm=True,
-                 use_e=True,
-                 activation=None,
-                 num_relations=1
-                 ):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        layer=0,
+        heads=1,
+        dropout=0.1,
+        num_star=1,
+        residual=True,
+        layer_norm=True,
+        use_e=True,
+        activation=None,
+        num_relations=1,
+    ):
         super(GraphStarConv, self).__init__()
         self.layer = layer
         self.use_e = use_e
@@ -73,10 +70,18 @@ class GraphStarConv(MessagePassing):
 
         assert out_channels % heads == 0
         self.size_pre_head = out_channels // heads
-        self.nWq = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
-        self.nWk = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
-        self.nWv = torch.nn.ModuleList([torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)])
-        self.nWo = torch.nn.ModuleList([torch.nn.Linear(out_channels, out_channels) for _ in range(num_relations)])
+        self.nWq = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)]
+        )
+        self.nWk = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)]
+        )
+        self.nWv = torch.nn.ModuleList(
+            [torch.nn.Linear(in_channels, out_channels) for _ in range(num_relations)]
+        )
+        self.nWo = torch.nn.ModuleList(
+            [torch.nn.Linear(out_channels, out_channels) for _ in range(num_relations)]
+        )
 
         self.nLayerNorm = torch.nn.LayerNorm(out_channels)
         self.num_relations = num_relations
@@ -92,7 +97,9 @@ class GraphStarConv(MessagePassing):
         if stars is not None:
             nodes = torch.cat([nodes, stars], dim=0)
 
-        nodes = self.propagate('add', edge_index, edge_type, x=nodes, num_nodes=num_node)
+        nodes = self.propagate(
+            "add", edge_index, edge_type, x=nodes, num_nodes=num_node
+        )
 
         return nodes
 
@@ -111,14 +118,14 @@ class GraphStarConv(MessagePassing):
             **kwargs: Any additional data which is needed to construct messages
                 and to update node embeddings.
         """
-        assert aggr in ['add', 'mean', 'max']
-        kwargs['edge_index'] = edge_index
+        assert aggr in ["add", "mean", "max"]
+        kwargs["edge_index"] = edge_index
         x = kwargs["x"]
         num_nodes = kwargs["num_nodes"]
 
         out_list = []
         for i in range(self.num_relations):
-            edge_index_mask = (edge_type == i)
+            edge_index_mask = edge_type == i
             if edge_index_mask.sum() > 0:
 
                 edge_index_i = edge_index[0][edge_index_mask]
@@ -141,13 +148,19 @@ class GraphStarConv(MessagePassing):
                     xk = torch.index_select(xk, 0, edge_index_j)
                     xv = torch.index_select(xv, 0, edge_index_j)
 
-                out = self.message(xq, xk, xv,
-                                   edge_index_i, num_nodes)
+                out = self.message(xq, xk, xv, edge_index_i, num_nodes)
 
-                out = scatter_(aggr, out, edge_index_i, dim_size=size)
+                if (aggr=="add"):
+                    out = scatter_add(dim=0, src=out, index=edge_index_i, dim_size=size)
+                elif (aggr=="mean"):
+                    out = scatter_mean(dim=0, src=out, index=edge_index_i, dim_size=size)
+                else:
+                    out = scatter_max(sdim=0, src=out, index=edge_index_i, dim_size=size)
                 out = self.update(out)
                 if out.size(0) < num_nodes:
-                    out = torch.cat([out, out.new_zeros([num_nodes - out.size(0), out.size(-1)])])
+                    out = torch.cat(
+                        [out, out.new_zeros([num_nodes - out.size(0), out.size(-1)])]
+                    )
                 out = self.nWo[i](out)
             else:
                 out = x.new_zeros([num_nodes, self.out_channels])
@@ -181,12 +194,13 @@ class GraphStarConv(MessagePassing):
 
     def cal_att_score(self, q, k, heads):
         out_channel = q.size(-1)
-        score = torch.matmul(q.view(-1, heads, 1, out_channel), k.view(-1, heads, out_channel, 1)).view(
-            -1, heads)
+        score = torch.matmul(
+            q.view(-1, heads, 1, out_channel), k.view(-1, heads, out_channel, 1)
+        ).view(-1, heads)
         score = score / math.sqrt(out_channel)
         return score
 
     def __repr__(self):
-        return '{}({}, {}, heads={})'.format(self.__class__.__name__,
-                                             self.in_channels,
-                                             self.out_channels, self.heads)
+        return "{}({}, {}, heads={})".format(
+            self.__class__.__name__, self.in_channels, self.out_channels, self.heads
+        )

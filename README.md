@@ -64,8 +64,11 @@ We are currently running [Python 3.7.5](https://www.python.org/downloads/release
  2) Install dependencies
  
  ```
- pip install -r requirements.txt
+ python setup.py cu110
  ```
+
+Here you can change cu110 to the prefered version. Possible versions are `cpu`, `cu92`, `cu101`, `cu102` and `cu110`.
+
 
 ## Testing (Run the code)
 
