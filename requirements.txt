@@ -4,7 +4,7 @@ isodate==0.6.0
 kiwisolver==1.0.1
 matplotlib==3.0.3
 networkx==2.3
-numpy==1.16.2
+numpy==1.22.0
 pandas==0.24.2
 Pillow==6.0.0
 plyfile==0.7
